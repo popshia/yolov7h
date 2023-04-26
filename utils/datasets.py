@@ -353,7 +353,7 @@ def img2label_paths(img_paths):
 
 
 class LoadImagesAndLabels(Dataset):  # for training/testing
-    def __init__(self, path, img_size=640, batch_size=16, augment=False, hyp=None, rect=False, image_weights=False,
+    def __init__(self, path, img_size=640, batch_size=16, augment=False, hyp=None, rect=False, image_weights=False, 
                  cache_images=False, single_cls=False, stride=32, pad=0.0, prefix='',
                  # REVIEW: add extra arguments
                  obb=False):
@@ -621,10 +621,14 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         nL = len(labels)  # number of labels
         if nL:
             # REVIEW: add obb corner to xywh
-            if self.obb and self.augment:
-                labels_xywh = poly2xywh(labels[:, 1:9])  # convert xyxy to xywh
-                labels = np.concatenate((labels[: , 0].reshape(-1, 1), labels_xywh, labels[:, -1].reshape(-1, 1)), axis=1)
-            labels[:, 1:5] = xyxy2xywh(labels[:, 1:5])  # convert xyxy to xywh
+            if self.obb:
+                if self.augment:
+                    labels_xywh = poly2xywh(labels[:, 1:9])  # convert xyxy to xywh
+                    labels = np.concatenate((labels[: , 0].reshape(-1, 1), labels_xywh, labels[:, -1].reshape(-1, 1)), axis=1)
+                else:
+                    labels[:, 1:5] = xyxy2xywh(labels[:, 1:5])  # convert xyxy to xywh
+            else:
+                labels[:, 1:5] = xyxy2xywh(labels[:, 1:5])  # convert xyxy to xywh
             labels[:, [2, 4]] /= img.shape[0]  # normalized height 0-1
             labels[:, [1, 3]] /= img.shape[1]  # normalized width 0-1
 

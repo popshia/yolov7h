@@ -199,7 +199,8 @@ def plot_images(images, targets, paths=None, fname='images.jpg', names=None, max
                         boxes *= scale_factor
                     boxes[[0, 2]] += block_x
                     boxes[[1, 3]] += block_y
-            for j, box in enumerate(boxes.T):
+                    boxes = boxes.T
+            for j, box in enumerate(boxes):
                 cls = int(classes[j])
                 color = colors[cls % len(colors)]
                 cls = names[cls] if names else cls

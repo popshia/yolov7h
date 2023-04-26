@@ -134,7 +134,8 @@ def test(data,
 
             # Run NMS
             # REVIEW: only denormalize xywh(2:6)
-            targets[:, 2:6] *= torch.Tensor([width, height, width, height]).to(device)  # to pixels
+            if not obb:
+                targets[:, 2:6] *= torch.Tensor([width, height, width, height]).to(device)  # to pixels
             lb = [targets[targets[:, 0] == i, 1:] for i in range(nb)] if save_hybrid else []  # for autolabelling
 
             # REVIEW: add plotting for outputs befrore NMS
@@ -246,6 +247,7 @@ def test(data,
             f = save_dir / f'test_batch{batch_i}_labels.jpg'  # labels
             args = {'images':img, 'targets':targets, 'paths':paths, 'fname':f, 'names':names, 'obb':obb}
             # Thread(target=plot_images, args=(img, targets, paths, f, names), daemon=True).start()
+            print(targets)
             Thread(target=plot_images, kwargs=args, daemon=True).start()
             f = save_dir / f'test_batch{batch_i}_pred.jpg'  # predictions
             args = {'images':img, 'targets':output_to_target(out), 'paths':paths, 'fname':f, 'names':names, 'obb':obb}
