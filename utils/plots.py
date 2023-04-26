@@ -176,6 +176,7 @@ def plot_images(images, targets, paths=None, fname='images.jpg', names=None, max
                 boxes = image_targets[:, 2:7]
             else:
                 boxes = xywh2xyxy(image_targets[:, 2:6]).T
+            # FIXME: hbb flag make no classes
             classes = image_targets[:, 1].astype('int')
             # REVIEW: change label condition index from 6 to 7
             # labels = image_targets.shape[1] == 6  # labels if no conf column
