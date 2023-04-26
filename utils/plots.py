@@ -186,11 +186,11 @@ def plot_images(images, targets, paths=None, fname='images.jpg', names=None, max
             conf = None if labels else image_targets[:, 7]  # check for confidence presence (label vs pred)
 
             if boxes.shape[1]:
+                # REVIEW: add my own conversion, and don't denormalized while testing, cuz is already denormalized before NMS
                 if obb:
-                    # REVIEW: add my own conversion
                     boxes[:, [0, 2]] *= w
-                    boxes[:, [0]] += block_x
                     boxes[:, [1, 3]] *= h
+                    boxes[:, [0]] += block_x
                     boxes[:, [1]] += block_y
                 else:
                     if boxes.max() <= 1.01:  # if normalized with tolerance 0.01

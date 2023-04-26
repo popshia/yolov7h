@@ -133,9 +133,8 @@ def test(data,
                 loss += compute_loss([x.float() for x in train_out], targets)[1][:4]  # box, obj, cls
 
             # Run NMS
-            # REVIEW: only denormalize xywh(2:6)
-            if not obb:
-                targets[:, 2:6] *= torch.Tensor([width, height, width, height]).to(device)  # to pixels
+            # REVIEW: remove target denormalize
+            # targets[:, 2:6] *= torch.Tensor([width, height, width, height]).to(device)  # to pixels
             lb = [targets[targets[:, 0] == i, 1:] for i in range(nb)] if save_hybrid else []  # for autolabelling
 
             # REVIEW: add plotting for outputs befrore NMS
@@ -207,7 +206,8 @@ def test(data,
                 tcls_tensor = labels[:, 0]
 
                 # target boxes
-                tbox = xywh2xyxy(labels[:, 1:5])
+                # REVIEW: add denormalized
+                tbox = xywh2xyxy(labels[:, 1:5]) * torch.Tensor([width, height, width, height]).to(device)
                 scale_coords(img[si].shape[1:], tbox, shapes[si][0], shapes[si][1])  # native-space labels
                 if plots:
                     confusion_matrix.process_batch(predn, torch.cat((labels[:, 0:1], tbox), 1))
@@ -247,7 +247,6 @@ def test(data,
             f = save_dir / f'test_batch{batch_i}_labels.jpg'  # labels
             args = {'images':img, 'targets':targets, 'paths':paths, 'fname':f, 'names':names, 'obb':obb}
             # Thread(target=plot_images, args=(img, targets, paths, f, names), daemon=True).start()
-            print(targets)
             Thread(target=plot_images, kwargs=args, daemon=True).start()
             f = save_dir / f'test_batch{batch_i}_pred.jpg'  # predictions
             args = {'images':img, 'targets':output_to_target(out), 'paths':paths, 'fname':f, 'names':names, 'obb':obb}
