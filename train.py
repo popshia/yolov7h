@@ -246,7 +246,9 @@ def train(hyp, opt, device, tb_writer=None):
     dataloader, dataset = create_dataloader(train_path, imgsz, batch_size, gs, opt,
                                             hyp=hyp, augment=True, cache=opt.cache_images, rect=opt.rect, rank=rank,
                                             world_size=opt.world_size, workers=opt.workers,
-                                            image_weights=opt.image_weights, quad=opt.quad, prefix=colorstr('train: '))
+                                            image_weights=opt.image_weights, quad=opt.quad, prefix=colorstr('train: '),
+                                            # REVIEW: add extra arguments
+                                            obb=opt.obb)
     mlc = np.concatenate(dataset.labels, 0)[:, 0].max()  # max label class
     nb = len(dataloader)  # number of batches
     assert mlc < nc, 'Label class %g exceeds nc=%g in %s. Possible class labels are 0-%g' % (mlc, nc, opt.data, nc - 1)
@@ -256,7 +258,9 @@ def train(hyp, opt, device, tb_writer=None):
         testloader = create_dataloader(test_path, imgsz_test, batch_size * 2, gs, opt,  # testloader
                                        hyp=hyp, cache=opt.cache_images and not opt.notest, rect=True, rank=-1,
                                        world_size=opt.world_size, workers=opt.workers,
-                                       pad=0.5, prefix=colorstr('val: '))[0]
+                                       pad=0.5, prefix=colorstr('val: '),
+                                       # REVIEW: add extra arguments
+                                       obb=opt.obb)[0]
 
         if not opt.resume:
             labels = np.concatenate(dataset.labels, 0)
@@ -401,7 +405,11 @@ def train(hyp, opt, device, tb_writer=None):
                 # Plot
                 if plots and ni < 10:
                     f = save_dir / f'train_batch{ni}.jpg'  # filename
-                    Thread(target=plot_images, args=(imgs, targets, paths, f), daemon=True).start()
+                    # REVIEW: add argument dictionary
+                    args = {'images':imgs, 'targets':targets, 'paths':paths, 'fname':f, 'obb':opt.obb}
+                    # REVIEW: change thread args to dictioinary
+                    # Thread(target=plot_images, args=(imgs, targets, paths, f), daemon=True).start()
+                    Thread(target=plot_images, kwargs=args, daemon=True).start()
                     # if tb_writer:
                     #     tb_writer.add_image(f, result, dataformats='HWC', global_step=epoch)
                     #     tb_writer.add_graph(torch.jit.trace(model, imgs, strict=False), [])  # add model graph
@@ -438,7 +446,8 @@ def train(hyp, opt, device, tb_writer=None):
                                                  v5_metric=opt.v5_metric,
                                                  # REVIEW: add extra parameters
                                                  tb_writer=tb_writer,
-                                                 epoch=epoch)
+                                                 epoch=epoch,
+                                                 obb=opt.obb)
 
             # Write
             with open(results_file, 'a') as f:
@@ -524,7 +533,8 @@ def train(hyp, opt, device, tb_writer=None):
                                           v5_metric=opt.v5_metric,
                                           # REVIEW: add extra parameters
                                           tb_writer=tb_writer,
-                                          epoch=epoch)
+                                          epoch=epoch,
+                                          obb=opt.obb)
 
         # Strip optimizers
         final = best if best.exists() else last  # final model
@@ -583,6 +593,7 @@ if __name__ == '__main__':
     parser.add_argument('--freeze', nargs='+', type=int, default=[0], help='Freeze layers: backbone of yolov7=50, first3=0 1 2')
     parser.add_argument('--v5-metric', action='store_true', help='assume maximum recall as 1.0 in AP calculation')
     parser.add_argument('--overwrite', action='store_true', help='overwrite the project')
+    parser.add_argument('--obb', action='store_true', help='set train obb flag')
     opt = parser.parse_args()
 
     # Set DDP variables

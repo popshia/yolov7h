@@ -45,7 +45,8 @@ def test(data,
          v5_metric=False,
          # REVIEW: add extra parameters
          tb_writer=None,
-         epoch=-1):
+         epoch=-1,
+         obb=False):
     # Initialize/load model and set device
     training = model is not None
     if training:  # called by train.py
@@ -138,7 +139,7 @@ def test(data,
 
             # REVIEW: add plotting for outputs befrore NMS
             if training and batch_i == rand_batch:
-                plot_pred_results(tb_writer, "test/before_nms", out[0], 0.05, copy.deepcopy(cv_imgs[0]), epoch, before_nms=True)
+                plot_pred_results(tb_writer, "debug/nms_before", out[0], 0.05, copy.deepcopy(cv_imgs[0]), epoch, before_nms=True, obb=obb)
 
             t = time_synchronized()
             out = non_max_suppression(out, conf_thres=conf_thres, iou_thres=iou_thres, labels=lb, multi_label=True)
@@ -146,7 +147,7 @@ def test(data,
 
         # REVIEW: add plotting for outputs after NMS
         if training and batch_i == rand_batch:
-            plot_pred_results(tb_writer, "test/after_nms", out[0], 0.05, copy.deepcopy(cv_imgs[0]), epoch, before_nms=False)
+            plot_pred_results(tb_writer, "debug/nms_after", out[0], 0.05, copy.deepcopy(cv_imgs[0]), epoch, before_nms=False, obb=obb)
 
         # Statistics per image
         for si, pred in enumerate(out):
@@ -241,10 +242,15 @@ def test(data,
 
         # Plot images
         if plots and batch_i < 3:
+            # REVIEW: add extra args and change args in threads
             f = save_dir / f'test_batch{batch_i}_labels.jpg'  # labels
-            Thread(target=plot_images, args=(img, targets, paths, f, names), daemon=True).start()
+            args = {'images':img, 'targets':targets, 'paths':paths, 'fname':f, 'names':names, 'obb':obb}
+            # Thread(target=plot_images, args=(img, targets, paths, f, names), daemon=True).start()
+            Thread(target=plot_images, kwargs=args, daemon=True).start()
             f = save_dir / f'test_batch{batch_i}_pred.jpg'  # predictions
-            Thread(target=plot_images, args=(img, output_to_target(out), paths, f, names), daemon=True).start()
+            args = {'images':img, 'targets':output_to_target(out), 'paths':paths, 'fname':f, 'names':names, 'obb':obb}
+            # Thread(target=plot_images, args=(img, output_to_target(out), paths, f, names), daemon=True).start()
+            Thread(target=plot_images, kwargs=args, daemon=True).start()
 
     # Compute statistics
     stats = [np.concatenate(x, 0) for x in zip(*stats)]  # to numpy

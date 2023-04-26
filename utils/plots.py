@@ -54,12 +54,27 @@ def butter_lowpass_filtfilt(data, cutoff=1500, fs=50000, order=5):
     return filtfilt(b, a, data)  # forward-backward filter
 
 
-def plot_one_box(x, img, color=None, label=None, line_thickness=3):
+def plot_one_box(x, img, color=None, label=None, line_thickness=3,
+                 # REVIEW: add extra arguments
+                 obb=False):
     # Plots one bounding box on image img
     tl = line_thickness or round(0.002 * (img.shape[0] + img.shape[1]) / 2) + 1  # line/font thickness
     color = color or [random.randint(0, 255) for _ in range(3)]
-    c1, c2 = (int(x[0]), int(x[1])), (int(x[2]), int(x[3]))
-    cv2.rectangle(img, c1, c2, color, thickness=tl, lineType=cv2.LINE_AA)
+
+    if obb:
+        # REVIEW: change x1, y1, x2, y2 to x1, y1, x2, y2..., x4, y4
+        poly = single_xywhrad2poly(x, denormalize=False)
+        c1 = poly[1]
+
+        # REVIEW: change draw rectangle to contours
+        cv2.line(img, poly[0], poly[1], color, tl, cv2.LINE_AA)
+        cv2.line(img, poly[1], poly[2], color, tl, cv2.LINE_AA)
+        cv2.line(img, poly[2], poly[3], color, tl, cv2.LINE_AA)
+        cv2.line(img, poly[3], poly[0], color, tl, cv2.LINE_AA)
+    else:
+        c1, c2 = (int(x[0]), int(x[1])), (int(x[2]), int(x[3]))
+        cv2.rectangle(img, c1, c2, color, thickness=tl, lineType=cv2.LINE_AA)
+
     if label:
         tf = max(tl - 1, 1)  # font thickness
         t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[0]
@@ -114,7 +129,9 @@ def output_to_target(output):
     return np.array(targets)
 
 
-def plot_images(images, targets, paths=None, fname='images.jpg', names=None, max_size=640, max_subplots=16):
+def plot_images(images, targets, paths=None, fname='images.jpg', names=None, max_size=640, max_subplots=16,
+                # REVIEW: add extra arguments
+                obb=False):
     # Plot image grid with labels
 
     if isinstance(images, torch.Tensor):
@@ -154,8 +171,11 @@ def plot_images(images, targets, paths=None, fname='images.jpg', names=None, max
         mosaic[block_y:block_y + h, block_x:block_x + w, :] = img
         if len(targets) > 0:
             image_targets = targets[targets[:, 0] == i]
-            # REVIEW: remove wrong xywh2xyxy
-            boxes = xywh2xyxy(image_targets[:, 2:6]).T
+            # REVIEW: remove wrong xywh2xyxy and add boxes of xywhrad
+            if obb:
+                boxes = image_targets[:, 2:7]
+            else:
+                boxes = xywh2xyxy(image_targets[:, 2:6]).T
             classes = image_targets[:, 1].astype('int')
             # REVIEW: change label condition index from 6 to 7
             # labels = image_targets.shape[1] == 6  # labels if no conf column
@@ -165,13 +185,20 @@ def plot_images(images, targets, paths=None, fname='images.jpg', names=None, max
             conf = None if labels else image_targets[:, 7]  # check for confidence presence (label vs pred)
 
             if boxes.shape[1]:
-                if boxes.max() <= 1.01:  # if normalized with tolerance 0.01
-                    boxes[[0, 2]] *= w  # scale to pixels
-                    boxes[[1, 3]] *= h
-                elif scale_factor < 1:  # absolute coords need scale if image scales
-                    boxes *= scale_factor
-            boxes[[0, 2]] += block_x
-            boxes[[1, 3]] += block_y
+                if obb:
+                    # REVIEW: add my own conversion
+                    boxes[:, [0, 2]] *= w
+                    boxes[:, [0]] += block_x
+                    boxes[:, [1, 3]] *= h
+                    boxes[:, [1]] += block_y
+                else:
+                    if boxes.max() <= 1.01:  # if normalized with tolerance 0.01
+                        boxes[[0, 2]] *= w  # scale to pixels
+                        boxes[[1, 3]] *= h
+                    elif scale_factor < 1:  # absolute coords need scale if image scales
+                        boxes *= scale_factor
+                    boxes[[0, 2]] += block_x
+                    boxes[[1, 3]] += block_y
             for j, box in enumerate(boxes.T):
                 cls = int(classes[j])
                 color = colors[cls % len(colors)]
@@ -183,14 +210,13 @@ def plot_images(images, targets, paths=None, fname='images.jpg', names=None, max
                     # label += " " + str(image_targets[j, 6])[:4]
                     # degree_sign = u"\N{DEGREE SIGN}"
                     label += " " + str(int(float(image_targets[j, 6])*360))
-                    plot_one_box(box, mosaic, label=label, color=color, line_thickness=tl)
+                    plot_one_box(box, mosaic, label=label, color=color, line_thickness=tl, obb=obb)
 
         # Draw image filename labels
         if paths:
             label = Path(paths[i]).name[:40]  # trim to 40 char
             t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[0]
-            cv2.putText(mosaic, label, (block_x + 5, block_y + t_size[1] + 5), 0, tl / 3, [220, 220, 220], thickness=tf,
-                        lineType=cv2.LINE_AA)
+            cv2.putText(mosaic, label, (block_x + 5, block_y + t_size[1] + 5), 0, tl / 3, [220, 220, 220], thickness=tf, lineType=cv2.LINE_AA)
 
         # Image border
         cv2.rectangle(mosaic, (block_x, block_y), (block_x + w, block_y + h), (255, 255, 255), thickness=3)
@@ -547,13 +573,15 @@ def plot_targets_and_anchors(tb_writer, model, epoch, cv_imgs, indices, tbox, tr
                     cv2.line(img_with_all_anchors, poly[3], poly[0], color, 1, cv2.LINE_AA)
 
             
-            tb_writer.add_image("train/anchor_one", img_with_one_anchor, dataformats="HWC", global_step=epoch)
+            tb_writer.add_image("debug/anchor_one", img_with_one_anchor, dataformats="HWC", global_step=epoch)
 
-    tb_writer.add_image("train/anchor_all", img_with_all_anchors, dataformats="HWC", global_step=epoch)
+    tb_writer.add_image("debug/anchor_all", img_with_all_anchors, dataformats="HWC", global_step=epoch)
 
 
 # REVIEW: plotting for pred results in test phase
-def plot_pred_results(tb_writer, f, preds, conf_thres, img, epoch, before_nms=False, shape=None, num=0):
+def plot_pred_results(tb_writer, f, preds, conf_thres, img, epoch, before_nms=False, shape=None, num=0,
+                      # REVIEW: add extra arguments
+                      obb=False):
     img_to_draw = img
 
     for pred in preds:
@@ -563,17 +591,24 @@ def plot_pred_results(tb_writer, f, preds, conf_thres, img, epoch, before_nms=Fa
 
             if before_nms:
                 box = single_xywh2xyxy(box)
-            # poly = single_xyxy2poly(box, rad)
-            box = np.array(box.cpu()).astype(int)
 
-            # if poly.all() >= 0.0:
-            if box.all() >= 0.0:
-                # box = box.unsqueeze(0)
-                # NOTE: cv2.drawline
-                # cv2.line(img_to_draw, poly[0], poly[1], (255, 0, 0), 1, cv2.LINE_AA)
-                # cv2.line(img_to_draw, poly[1], poly[2], (255, 0, 0), 1, cv2.LINE_AA)
-                # cv2.line(img_to_draw, poly[2], poly[3], (255, 0, 0), 1, cv2.LINE_AA)
-                # cv2.line(img_to_draw, poly[3], poly[0], (255, 0, 0), 1, cv2.LINE_AA)
-                cv2.rectangle(img_to_draw, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 1, cv2.LINE_AA)
+            # REVIEW: add obb
+            if obb:
+                poly = single_xyxy2poly(box, rad)
+
+                if poly.all() >= 0.0:
+                    # box = box.unsqueeze(0)
+                    # NOTE: cv2.drawline
+                    cv2.line(img_to_draw, poly[0], poly[1], (255, 0, 0), 1, cv2.LINE_AA)
+                    cv2.line(img_to_draw, poly[1], poly[2], (255, 0, 0), 1, cv2.LINE_AA)
+                    cv2.line(img_to_draw, poly[2], poly[3], (255, 0, 0), 1, cv2.LINE_AA)
+                    cv2.line(img_to_draw, poly[3], poly[0], (255, 0, 0), 1, cv2.LINE_AA)
+            else:
+                box = np.array(box.cpu()).astype(int)
+
+                if box.all() >= 0.0:
+                    # box = box.unsqueeze(0)
+                    # NOTE: cv2.drawline
+                    cv2.rectangle(img_to_draw, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 1, cv2.LINE_AA)
 
     tb_writer.add_image(f, img_to_draw, dataformats="HWC", global_step=epoch)
