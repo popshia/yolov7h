@@ -215,7 +215,7 @@ def test(data,
                 # Per target class
                 for cls in torch.unique(tcls_tensor):
                     ti = (cls == tcls_tensor).nonzero(as_tuple=False).view(-1)  # prediction indices
-                    # REVIEW: change pred index from 5 to 6
+                    # REVIEW: change pred cls index from 5 to 6
                     # pi = (cls == pred[:, 5]).nonzero(as_tuple=False).view(-1)  # target indices
                     pi = (cls == pred[:, 6]).nonzero(as_tuple=False).view(-1)  # target indices
                     
