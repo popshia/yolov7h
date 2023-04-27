@@ -153,8 +153,8 @@ def output_to_target(output):
     for i, o in enumerate(output):
         # REVIEW: get radian and add from output
         for *box, rad, conf, cls in o.cpu().numpy():
-            # print(*box, rad, conf, cls)
-            # print([i, cls, *list(np.array(box)[None]), rad, conf])
+            # print("out:", *box, rad, conf, cls)
+            # print("target:", [i, cls, *list(*xyxy2xywh(np.array(box)[None])), rad, conf])
             targets.append([i, cls, *list(*xyxy2xywh(np.array(box)[None])), rad, conf])
     return np.array(targets)
 
@@ -214,7 +214,7 @@ def plot_images(
                 boxes = image_targets[:, 2:7]
             else:
                 boxes = xywh2xyxy(image_targets[:, 2:6]).T
-            # FIXME: hbb flag make no classes
+            # FIXME: hbb mosaic flag make no classes
             classes = image_targets[:, 1].astype("int")
             # REVIEW: change label condition index from 6 to 7
             # labels = image_targets.shape[1] == 6  # labels if no conf column
@@ -225,11 +225,14 @@ def plot_images(
                 None if labels else image_targets[:, 7]
             )  # check for confidence presence (label vs pred)
 
-            if boxes.shape[1]:
+            if boxes.shape[0] and boxes.shape[1]:
                 # REVIEW: add my own conversion, and don't denormalized while testing, cuz is already denormalized before NMS
                 if obb:
-                    boxes[:, [0, 2]] *= w
-                    boxes[:, [1, 3]] *= h
+                    # print(boxes, boxes.shape)
+                    # REVIEW: add denormalize checking
+                    if boxes.max() <= 1.01:  # if normalized with tolerance 0.01
+                        boxes[:, [0, 2]] *= w
+                        boxes[:, [1, 3]] *= h
                     boxes[:, [0]] += block_x
                     boxes[:, [1]] += block_y
                 else:
