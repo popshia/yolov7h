@@ -162,7 +162,8 @@ def detect(save_img=False):
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
 
                 # Write results
-                for *xyxy, conf, cls in reversed(det):
+                # REVIEW: add radian in detection retrieving
+                for *xyxy, rad, conf, cls in reversed(det):
                     if save_txt:  # Write to file
                         xywh = (
                             (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn)
@@ -176,14 +177,33 @@ def detect(save_img=False):
                             f.write(("%g " * len(line)).rstrip() % line + "\n")
 
                     if save_img or view_img:  # Add bbox to image
-                        label = f"{names[int(cls)]} {conf:.2f}"
-                        plot_one_box(
-                            xyxy,
-                            im0,
-                            label=label,
-                            color=colors[int(cls)],
-                            line_thickness=1,
-                        )
+                        angle = int(float(rad) * 360)
+                        label = f"{names[int(cls)]} {angle} {conf:.2f}"
+                        if opt.obb:
+                            plot_one_box(
+                                torch.cat(
+                                    (
+                                        (xyxy2xywh(torch.tensor(xyxy).view(1, 4))).view(
+                                            -1
+                                        ),
+                                        rad.cpu().view(-1),
+                                    )
+                                ).view(-1),
+                                im0,
+                                label=label,
+                                color=colors[int(cls)],
+                                line_thickness=1,
+                                obb=opt.obb,
+                            )
+                        else:
+                            plot_one_box(
+                                xyxy,
+                                im0,
+                                label=label,
+                                color=colors[int(cls)],
+                                line_thickness=1,
+                                obb=opt.obb,
+                            )
 
             # Print time (inference + NMS)
             print(
@@ -277,6 +297,7 @@ if __name__ == "__main__":
         help="existing project/name ok, do not increment",
     )
     parser.add_argument("--no-trace", action="store_true", help="don`t trace model")
+    parser.add_argument("--obb", action="store_true", help="obbf flag")
     opt = parser.parse_args()
     print(opt)
     # check_requirements(exclude=('pycocotools', 'thop'))

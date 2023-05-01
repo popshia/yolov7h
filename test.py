@@ -187,7 +187,7 @@ def test(
                 # loss += compute_loss([x.float() for x in train_out], targets)[1][:3]  # box, obj, cls
                 loss += compute_loss([x.float() for x in train_out], targets)[1][
                     :4
-                ]  # box, obj, cls
+                ]  # box, obj, cls, rad
 
             # Run NMS
             # REVIEW: remove target denormalize
@@ -239,6 +239,8 @@ def test(
             labels = targets[targets[:, 0] == si, 1:]
             nl = len(labels)
             tcls = labels[:, 0].tolist() if nl else []  # target class
+            # REVIEW: add trad
+            trad = labels[:, 5].tolist() if nl else []  # target radian
             path = Path(paths[si])
             seen += 1
 
@@ -380,6 +382,7 @@ def test(
             # Append statistics (correct, conf, pcls, tcls)
             # REVIEW: change stats index
             # stats.append((correct.cpu(), pred[:, 4].cpu(), pred[:, 5].cpu(), tcls))
+            # stats.append((correct.cpu(), pred[:, 5].cpu(), pred[:, 6].cpu(), tcls, pred[:, 4].cpu(), trad))
             stats.append((correct.cpu(), pred[:, 5].cpu(), pred[:, 6].cpu(), tcls))
 
         # Plot images
