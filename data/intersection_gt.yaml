@@ -1,0 +1,8 @@
+train: /home/lab602.11077009/.pipeline/11077009/datasets/Intersection(GT)/train.txt
+val: /home/lab602.11077009/.pipeline/11077009/datasets/Intersection(GT)/val.txt
+
+# number of classes
+nc: 8
+
+# class names
+names: ['sedan', 'truck', 'bus', 'tractor', 'trailer', 'person', 'bike', 'moto']
