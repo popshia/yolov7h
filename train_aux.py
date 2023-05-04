@@ -339,7 +339,7 @@ def train(hyp, opt, device, tb_writer=None):
         quad=opt.quad,
         prefix=colorstr("train: "),
         # REVIEW: add extra arguments
-        obb=opt.obb
+        obb=opt.obb,
     )
     mlc = np.concatenate(dataset.labels, 0)[:, 0].max()  # max label class
     nb = len(dataloader)  # number of batches
@@ -369,7 +369,7 @@ def train(hyp, opt, device, tb_writer=None):
             pad=0.5,
             prefix=colorstr("val: "),
             # REVIEW: add extra arguments
-            obb=opt.obb
+            obb=opt.obb,
         )[0]
 
         if not opt.resume:
@@ -477,7 +477,17 @@ def train(hyp, opt, device, tb_writer=None):
         # )
         logger.info(
             ("\n" + "%10s" * 9)
-            % ("Epoch", "gpu_mem", "box", "obj", "cls", "rad", "total", "labels", "img_size")
+            % (
+                "Epoch",
+                "gpu_mem",
+                "box",
+                "obj",
+                "cls",
+                "rad",
+                "total",
+                "labels",
+                "img_size",
+            )
         )
         if rank in [-1, 0]:
             pbar = tqdm(pbar, total=nb)  # progress bar
@@ -535,9 +545,15 @@ def train(hyp, opt, device, tb_writer=None):
             with amp.autocast(enabled=cuda):
                 pred = model(imgs)  # forward
                 loss, loss_items = compute_loss_ota(
-                    pred, targets.to(device), imgs,
+                    pred,
+                    targets.to(device),
+                    imgs,
                     # REVIEW: add extra parameters
-                    model, i, epoch, tb_writer, cv_imgs
+                    model,
+                    i,
+                    epoch,
+                    tb_writer,
+                    cv_imgs,
                 )  # loss scaled by batch_size
                 if rank != -1:
                     loss *= (
@@ -597,9 +613,7 @@ def train(hyp, opt, device, tb_writer=None):
                     # Thread(
                     #     target=plot_images, args=(imgs, targets, paths, f), daemon=True
                     # ).start()
-                    Thread(
-                        target=plot_images, kargs=args, daemon=True
-                    ).start()
+                    Thread(target=plot_images, kargs=args, daemon=True).start()
                     # if tb_writer:
                     #     tb_writer.add_image(f, result, dataformats='HWC', global_step=epoch)
                     #     tb_writer.add_graph(torch.jit.trace(model, imgs, strict=False), [])  # add model graph
@@ -778,7 +792,7 @@ def train(hyp, opt, device, tb_writer=None):
                     # REVIEW: add extra parameters
                     tb_writer=tb_writer,
                     epoch=epoch,
-                    obb=opt.obb
+                    obb=opt.obb,
                 )
 
         # Strip optimizers
@@ -920,12 +934,7 @@ if __name__ == "__main__":
         help="assume maximum recall as 1.0 in AP calculation",
     )
     # REVIEW: add obb flag
-    parser.add_argument(
-        "--obb",
-        action="store_true",
-        default=True,
-        help="obb flag"
-    )
+    parser.add_argument("--obb", action="store_true", default=True, help="obb flag")
     opt = parser.parse_args()
 
     # Set DDP variables

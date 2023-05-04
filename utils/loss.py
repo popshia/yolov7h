@@ -746,7 +746,15 @@ class ComputeLossOTA:
         )  # P3-P7
         self.ssi = list(det.stride).index(16) if autobalance else 0  # stride 16 index
         # REVIEW: add self.SL1rad and self.MSErad
-        self.BCEcls, self.BCEobj, self.SL1rad, self.MSErad, self.gr, self.hyp, self.autobalance = (
+        (
+            self.BCEcls,
+            self.BCEobj,
+            self.SL1rad,
+            self.MSErad,
+            self.gr,
+            self.hyp,
+            self.autobalance,
+        ) = (
             BCEcls,
             BCEobj,
             SL1rad,
@@ -758,13 +766,18 @@ class ComputeLossOTA:
         for k in "na", "nc", "nl", "anchors", "stride":
             setattr(self, k, getattr(det, k))
 
-    def __call__(self, p, targets, imgs,
-                 # REVIEW: add extra arguments
-                 model=None,
-                 num_batchs=-1,
-                 epoch=-1,
-                 tb_writer=None,
-                 cv_imgs=None,):  # predictions, targets, model
+    def __call__(
+        self,
+        p,
+        targets,
+        imgs,
+        # REVIEW: add extra arguments
+        model=None,
+        num_batchs=-1,
+        epoch=-1,
+        tb_writer=None,
+        cv_imgs=None,
+    ):  # predictions, targets, model
         device = targets.device
 
         # REVIEW: add lrad
@@ -775,7 +788,17 @@ class ComputeLossOTA:
             torch.zeros(1, device=device),
         )
         # REVIEW: add rads, indices and offsets
-        bs, as_, gjs, gis, targets, anchors, rads, indices, offsets = self.build_targets(p, targets, imgs)
+        (
+            bs,
+            as_,
+            gjs,
+            gis,
+            targets,
+            anchors,
+            rads,
+            indices,
+            offsets,
+        ) = self.build_targets(p, targets, imgs)
         pre_gen_gains = [
             torch.tensor(pp.shape, device=device)[[3, 2, 3, 2]] for pp in p
         ]
@@ -783,7 +806,13 @@ class ComputeLossOTA:
         # Losses
         for i, pi in enumerate(p):  # layer index, layer predictions
             # REVIEW: add corresponding rad
-            b, a, gj, gi, trad = bs[i], as_[i], gjs[i], gis[i], rads[i]  # image, anchor, gridy, gridx
+            b, a, gj, gi, trad = (
+                bs[i],
+                as_[i],
+                gjs[i],
+                gis[i],
+                rads[i],
+            )  # image, anchor, gridy, gridx
             tobj = torch.zeros_like(pi[..., 0], device=device)  # target obj
 
             n = b.shape[0]  # number of targets
@@ -820,7 +849,7 @@ class ComputeLossOTA:
                     # REVIEW: correct cls index
                     # lcls += self.BCEcls(ps[:, 5:], t)  # BCE
                     lcls += self.BCEcls(ps[:, 6:], t)  # BCE
-                
+
                 lrad += self.SL1rad(ps[:, 4], trad)
 
                 # Append targets to text file
@@ -1042,7 +1071,7 @@ class ComputeLossOTA:
             matching_anchs,
             matching_rads,
             indices,
-            offsets
+            offsets,
         )
 
     def find_3_positive(self, p, targets):
@@ -1577,7 +1606,15 @@ class ComputeLossAuxOTA:
         )  # P3-P7
         self.ssi = list(det.stride).index(16) if autobalance else 0  # stride 16 index
         # REVIEW: add SL1 and MSE
-        self.BCEcls, self.BCEobj, self.SL1rad, self.MSErad, self.gr, self.hyp, self.autobalance = (
+        (
+            self.BCEcls,
+            self.BCEobj,
+            self.SL1rad,
+            self.MSErad,
+            self.gr,
+            self.hyp,
+            self.autobalance,
+        ) = (
             BCEcls,
             BCEobj,
             SL1rad,
@@ -1589,13 +1626,18 @@ class ComputeLossAuxOTA:
         for k in "na", "nc", "nl", "anchors", "stride":
             setattr(self, k, getattr(det, k))
 
-    def __call__(self, p, targets, imgs,
-                 # REVIEW: add extra arguments
-                 model=None,
-                 num_batchs=-1,
-                 epoch=-1,
-                 tb_writer=None,
-                 cv_imgs=None,):  # predictions, targets, model
+    def __call__(
+        self,
+        p,
+        targets,
+        imgs,
+        # REVIEW: add extra arguments
+        model=None,
+        num_batchs=-1,
+        epoch=-1,
+        tb_writer=None,
+        cv_imgs=None,
+    ):  # predictions, targets, model
         device = targets.device
         # REVIEW: add lrad
         lcls, lbox, lobj, lrad = (
@@ -1614,12 +1656,20 @@ class ComputeLossAuxOTA:
             # REVIEW: add rads_aux, indices_aux, offsets_aux
             rads_aux,
             indices_aux,
-            offsets_aux
+            offsets_aux,
         ) = self.build_targets2(p[: self.nl], targets, imgs)
         # REVIEW: add rads, indices, offsets
-        bs, as_, gjs, gis, targets, anchors, rads, indices, offsets = self.build_targets(
-            p[: self.nl], targets, imgs
-        )
+        (
+            bs,
+            as_,
+            gjs,
+            gis,
+            targets,
+            anchors,
+            rads,
+            indices,
+            offsets,
+        ) = self.build_targets(p[: self.nl], targets, imgs)
         pre_gen_gains_aux = [
             torch.tensor(pp.shape, device=device)[[3, 2, 3, 2]] for pp in p[: self.nl]
         ]
@@ -1632,14 +1682,20 @@ class ComputeLossAuxOTA:
             pi = p[i]
             pi_aux = p[i + self.nl]
             # REVIEW: add trad
-            b, a, gj, gi, trad = bs[i], as_[i], gjs[i], gis[i], rads[i]  # image, anchor, gridy, gridx
+            b, a, gj, gi, trad = (
+                bs[i],
+                as_[i],
+                gjs[i],
+                gis[i],
+                rads[i],
+            )  # image, anchor, gridy, gridx
             # REVIEW: add trad_aux
             b_aux, a_aux, gj_aux, gi_aux, trad_aux = (
                 bs_aux[i],
                 as_aux_[i],
                 gjs_aux[i],
                 gis_aux[i],
-                rads_aux[i]
+                rads_aux[i],
             )  # image, anchor, gridy, gridx
             tobj = torch.zeros_like(pi[..., 0], device=device)  # target obj
             tobj_aux = torch.zeros_like(pi_aux[..., 0], device=device)  # target obj
@@ -1942,7 +1998,7 @@ class ComputeLossAuxOTA:
             # REVIEW: add extra return
             matching_rads,
             indices,
-            offsets
+            offsets,
         )
 
     def build_targets2(self, p, targets, imgs):
@@ -2135,7 +2191,7 @@ class ComputeLossAuxOTA:
             # REVIEW: add extra returns
             matching_rads,
             indices,
-            offsets
+            offsets,
         )
 
     def find_5_positive(self, p, targets):
@@ -2285,7 +2341,7 @@ class ComputeLossAuxOTA:
             gxy = t[:, 2:4]  # grid xy
             gwh = t[:, 4:6]  # grid wh
             # REVIEW: add grad
-            grad = t[:, 6]   # grid rad
+            grad = t[:, 6]  # grid rad
             gij = (gxy - offsets).long()
             gi, gj = gij.T  # grid xy indices
 
@@ -2293,7 +2349,7 @@ class ComputeLossAuxOTA:
             # REVIEW: fix anchox index
             # a = t[:, 6].long()  # anchor indices
             a = t[:, 7].long()  # anchor indices
-            # REVIEW: add grad in indices 
+            # REVIEW: add grad in indices
             indices.append(
                 (b, a, gj.clamp_(0, gain[3] - 1), gi.clamp_(0, gain[2] - 1), grad)
             )  # image, anchor, grid indices
@@ -2305,7 +2361,7 @@ class ComputeLossAuxOTA:
         return indices, anch, offsets_list
 
 
-def GWDLoss(pred, target, fun='log1p', tau=1.0, alpha=1.0, normalize=True):
+def GWDLoss(pred, target, fun="log1p", tau=1.0, alpha=1.0, normalize=True):
     """Gaussian Wasserstein distance loss.
     Derivation and simplification:
         Given any positive-definite symmetrical 2*2 matrix Z:
@@ -2348,24 +2404,24 @@ def GWDLoss(pred, target, fun='log1p', tau=1.0, alpha=1.0, normalize=True):
     xy_p, sigma_p = pred
     xy_t, sigma_t = target
 
-    xy_distance = (xy_p-xy_t).square().sum(dim=-1)
+    xy_distance = (xy_p - xy_t).square().sum(dim=-1)
     whr_distance = sigma_p.diagonal(dim1=-2, dim2=-1).sum(dim=-1)
     whr_distance = whr_distance + sigma_t.diagonal(dim1=-2, dim2=-1).sum(dim=-1)
 
     _t_tr = (sigma_p.bmm(sigma_t)).diagonal(dim1=-2, dim2=-1).sum(dim=-1)
-    _t_det_sqrt = (sigma_p.det()*sigma_t.det()).clamp(1e-7).sqrt()
-    whr_distance = whr_distance + (-2)*((_t_tr+2*_t_det_sqrt).clamp(1e-7).sqrt())
+    _t_det_sqrt = (sigma_p.det() * sigma_t.det()).clamp(1e-7).sqrt()
+    whr_distance = whr_distance + (-2) * ((_t_tr + 2 * _t_det_sqrt).clamp(1e-7).sqrt())
 
-    distance = (xy_distance+alpha*alpha*whr_distance).clamp(1e-7).sqrt()
+    distance = (xy_distance + alpha * alpha * whr_distance).clamp(1e-7).sqrt()
 
     if normalize:
-        scale = 2*(_t_det_sqrt.clamp(1e-7).sqrt().clamp(1e-7).sqrt()).clamp(1e-7)
+        scale = 2 * (_t_det_sqrt.clamp(1e-7).sqrt().clamp(1e-7).sqrt()).clamp(1e-7)
         distance = distance / scale
 
     return PostProcess(distance, fun=fun, tau=tau)
 
 
-def PostProcess(distance, fun='log1p', tau=1.0):
+def PostProcess(distance, fun="log1p", tau=1.0):
     """Convert distance to loss.
 
     Args:
@@ -2377,14 +2433,14 @@ def PostProcess(distance, fun='log1p', tau=1.0):
     Returns:
         loss (torch.Tensor)
     """
-    if fun == 'log1p':
+    if fun == "log1p":
         distance = torch.log1p(distance)
-    elif fun == 'sqrt':
+    elif fun == "sqrt":
         distance = torch.sqrt(distance.clamp(1e-7))
-    elif fun == 'none':
+    elif fun == "none":
         pass
     else:
-        raise ValueError(f'Invalid non-linear function {fun}')
+        raise ValueError(f"Invalid non-linear function {fun}")
 
     if tau >= 1.0:
         return 1 - 1 / (tau + distance)
@@ -2408,14 +2464,13 @@ def xywhrad2xysigma(xywhr):
     assert _shape[-1] == 5
     xy = xywhr[:, :2]
     wh = xywhr[:, 2:4].clamp(min=1e-7, max=1e7).reshape(-1, 2)
-    r = xywhr[:, 4]*math.pi*2
+    r = xywhr[:, 4] * math.pi * 2
     # r = xywhr[..., 4]*math.pi*2+math.pi/2
     cos_r = torch.cos(r)
     sin_r = torch.sin(r)
     R = torch.stack((cos_r, -sin_r, sin_r, cos_r), dim=-1).reshape(-1, 2, 2)
     S = 0.5 * torch.diag_embed(wh)
 
-    sigma = R.bmm(S.square()).bmm(R.permute(0, 2,
-                                            1)).reshape(_shape[:-1] + (2, 2))
+    sigma = R.bmm(S.square()).bmm(R.permute(0, 2, 1)).reshape(_shape[:-1] + (2, 2))
 
     return xy, sigma
