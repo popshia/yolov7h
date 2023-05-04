@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import math
 
 from utils.general import (
     bbox_alpha_iou,
@@ -488,6 +489,7 @@ class ComputeLoss:
         # REVIEW: add extra loss functions
         SL1rad = nn.SmoothL1Loss()
         MSErad = nn.MSELoss()
+        GWDrad = GWDLoss()
 
         # Class label smoothing https://arxiv.org/pdf/1902.04103.pdf eqn 3
         self.cp, self.cn = smooth_BCE(
@@ -516,8 +518,8 @@ class ComputeLoss:
             self.hyp,
             self.autobalance,
             self.SL1rad,
-            self.MSErad,
-        ) = (BCEcls, BCEobj, model.gr, h, autobalance, SL1rad, MSErad)
+            self.GWDrad,
+        ) = (BCEcls, BCEobj, model.gr, h, autobalance, SL1rad, GWDrad)
         for k in "na", "nc", "nl", "anchors":
             setattr(self, k, getattr(det, k))
 
@@ -595,6 +597,10 @@ class ComputeLoss:
                 #     [file.write('%11.5g ' * 4 % tuple(x) + '\n') for x in torch.cat((txy[i], twh[i]), 1)]
 
                 # REVIEW: add radian loss
+                # TODO: try GWD loss
+                # prad = xywhrad2xysigma(ps[:, :5])
+                # trad = xywhrad2xysigma(torch.cat((tbox[i], trad[i].view(-1, 1)), dim=1).unsqueeze(0))
+                # lrad += self.GWDrad(prad, trad)
                 lrad += self.SL1rad(prad.sigmoid(), trad[i])
 
             # REVIEW: change obji index from 4 to 5
@@ -2297,3 +2303,119 @@ class ComputeLossAuxOTA:
             offsets_list.append(offsets)
 
         return indices, anch, offsets_list
+
+
+def GWDLoss(pred, target, fun='log1p', tau=1.0, alpha=1.0, normalize=True):
+    """Gaussian Wasserstein distance loss.
+    Derivation and simplification:
+        Given any positive-definite symmetrical 2*2 matrix Z:
+            :math:`Tr(Z^{1/2}) = λ_1^{1/2} + λ_2^{1/2}`
+        where :math:`λ_1` and :math:`λ_2` are the eigen values of Z
+        Meanwhile we have:
+            :math:`Tr(Z) = λ_1 + λ_2`
+
+            :math:`det(Z) = λ_1 * λ_2`
+        Combination with following formula:
+            :math:`(λ_1^{1/2}+λ_2^{1/2})^2 = λ_1+λ_2+2 *(λ_1 * λ_2)^{1/2}`
+        Yield:
+            :math:`Tr(Z^{1/2}) = (Tr(Z) + 2 * (det(Z))^{1/2})^{1/2}`
+        For gwd loss the frustrating coupling part is:
+            :math:`Tr((Σ_p^{1/2} * Σ_t * Σp^{1/2})^{1/2})`
+        Assuming :math:`Z = Σ_p^{1/2} * Σ_t * Σ_p^{1/2}` then:
+            :math:`Tr(Z) = Tr(Σ_p^{1/2} * Σ_t * Σ_p^{1/2})
+            = Tr(Σ_p^{1/2} * Σ_p^{1/2} * Σ_t)
+            = Tr(Σ_p * Σ_t)`
+            :math:`det(Z) = det(Σ_p^{1/2} * Σ_t * Σ_p^{1/2})
+            = det(Σ_p^{1/2}) * det(Σ_t) * det(Σ_p^{1/2})
+            = det(Σ_p * Σ_t)`
+        and thus we can rewrite the coupling part as:
+            :math:`Tr(Z^{1/2}) = (Tr(Z) + 2 * (det(Z))^{1/2})^{1/2}`
+            :math:`Tr((Σ_p^{1/2} * Σ_t * Σ_p^{1/2})^{1/2})
+            = (Tr(Σ_p * Σ_t) + 2 * (det(Σ_p * Σ_t))^{1/2})^{1/2}`
+
+    Args:
+        pred (torch.Tensor): Predicted bboxes.
+        target (torch.Tensor): Corresponding gt bboxes.
+        fun (str): The function applied to distance. Defaults to 'log1p'.
+        tau (float): Defaults to 1.0.
+        alpha (float): Defaults to 1.0.
+        normalize (bool): Whether to normalize the distance. Defaults to True.
+
+    Returns:
+        loss (torch.Tensor)
+
+    """
+    xy_p, sigma_p = pred
+    xy_t, sigma_t = target
+
+    xy_distance = (xy_p-xy_t).square().sum(dim=-1)
+    whr_distance = sigma_p.diagonal(dim1=-2, dim2=-1).sum(dim=-1)
+    whr_distance = whr_distance + sigma_t.diagonal(dim1=-2, dim2=-1).sum(dim=-1)
+
+    _t_tr = (sigma_p.bmm(sigma_t)).diagonal(dim1=-2, dim2=-1).sum(dim=-1)
+    _t_det_sqrt = (sigma_p.det()*sigma_t.det()).clamp(1e-7).sqrt()
+    whr_distance = whr_distance + (-2)*((_t_tr+2*_t_det_sqrt).clamp(1e-7).sqrt())
+
+    distance = (xy_distance+alpha*alpha*whr_distance).clamp(1e-7).sqrt()
+
+    if normalize:
+        scale = 2*(_t_det_sqrt.clamp(1e-7).sqrt().clamp(1e-7).sqrt()).clamp(1e-7)
+        distance = distance / scale
+
+    return PostProcess(distance, fun=fun, tau=tau)
+
+
+def PostProcess(distance, fun='log1p', tau=1.0):
+    """Convert distance to loss.
+
+    Args:
+        distance (torch.Tensor)
+        fun (str, optional): The function applied to distance.
+            Defaults to 'log1p'.
+        tau (float, optional): Defaults to 1.0.
+
+    Returns:
+        loss (torch.Tensor)
+    """
+    if fun == 'log1p':
+        distance = torch.log1p(distance)
+    elif fun == 'sqrt':
+        distance = torch.sqrt(distance.clamp(1e-7))
+    elif fun == 'none':
+        pass
+    else:
+        raise ValueError(f'Invalid non-linear function {fun}')
+
+    if tau >= 1.0:
+        return 1 - 1 / (tau + distance)
+    else:
+        return distance
+
+
+def xywhrad2xysigma(xywhr):
+    """Convert oriented bounding box to 2-D Gaussian distribution.
+
+    Args:
+        xywhr (torch.Tensor): rbboxes with shape (N, 5).
+
+    Returns:
+        xy (torch.Tensor): center point of 2-D Gaussian distribution
+            with shape (N, 2).
+        sigma (torch.Tensor): covariance matrix of 2-D Gaussian distribution
+            with shape (N, 2, 2).
+    """
+    _shape = xywhr.shape
+    assert _shape[-1] == 5
+    xy = xywhr[:, :2]
+    wh = xywhr[:, 2:4].clamp(min=1e-7, max=1e7).reshape(-1, 2)
+    r = xywhr[:, 4]*math.pi*2
+    # r = xywhr[..., 4]*math.pi*2+math.pi/2
+    cos_r = torch.cos(r)
+    sin_r = torch.sin(r)
+    R = torch.stack((cos_r, -sin_r, sin_r, cos_r), dim=-1).reshape(-1, 2, 2)
+    S = 0.5 * torch.diag_embed(wh)
+
+    sigma = R.bmm(S.square()).bmm(R.permute(0, 2,
+                                            1)).reshape(_shape[:-1] + (2, 2))
+
+    return xy, sigma
