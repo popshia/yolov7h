@@ -179,6 +179,7 @@ def detect(save_img=False):
                     if save_img or view_img:  # Add bbox to image
                         angle = int(float(rad) * 360)
                         label = f"{names[int(cls)]} {angle} {conf:.2f}"
+                        # REVIEW: add obb options
                         if opt.obb:
                             plot_one_box(
                                 torch.cat(
@@ -297,7 +298,8 @@ if __name__ == "__main__":
         help="existing project/name ok, do not increment",
     )
     parser.add_argument("--no-trace", action="store_true", help="don`t trace model")
-    parser.add_argument("--obb", action="store_true", help="obbf flag")
+    # REVIEW: add obb flag
+    parser.add_argument("--obb", action="store_true", default=True, help="obb flag")
     opt = parser.parse_args()
     print(opt)
     # check_requirements(exclude=('pycocotools', 'thop'))

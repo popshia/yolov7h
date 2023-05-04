@@ -338,6 +338,8 @@ def train(hyp, opt, device, tb_writer=None):
         image_weights=opt.image_weights,
         quad=opt.quad,
         prefix=colorstr("train: "),
+        # REVIEW: add extra arguments
+        obb=opt.obb,
     )
     mlc = np.concatenate(dataset.labels, 0)[:, 0].max()  # max label class
     nb = len(dataloader)  # number of batches
@@ -366,6 +368,8 @@ def train(hyp, opt, device, tb_writer=None):
             workers=opt.workers,
             pad=0.5,
             prefix=colorstr("val: "),
+            # REVIEW: add extra arguments
+            obb=opt.obb,
         )[0]
 
         if not opt.resume:
@@ -460,13 +464,30 @@ def train(hyp, opt, device, tb_writer=None):
         # b = int(random.uniform(0.25 * imgsz, 0.75 * imgsz + gs) // gs * gs)
         # dataset.mosaic_border = [b - imgsz, -b]  # height, width borders
 
-        mloss = torch.zeros(4, device=device)  # mean losses
+        # REVIEW: correct mloss size
+        # mloss = torch.zeros(4, device=device)  # mean losses
+        mloss = torch.zeros(5, device=device)  # mean losses
         if rank != -1:
             dataloader.sampler.set_epoch(epoch)
         pbar = enumerate(dataloader)
+        # REVIEW: correct logger info
+        # logger.info(
+        #     ("\n" + "%10s" * 8)
+        #     % ("Epoch", "gpu_mem", "box", "obj", "cls", "total", "labels", "img_size")
+        # )
         logger.info(
-            ("\n" + "%10s" * 8)
-            % ("Epoch", "gpu_mem", "box", "obj", "cls", "total", "labels", "img_size")
+            ("\n" + "%10s" * 9)
+            % (
+                "Epoch",
+                "gpu_mem",
+                "box",
+                "obj",
+                "cls",
+                "rad",
+                "total",
+                "labels",
+                "img_size",
+            )
         )
         if rank in [-1, 0]:
             pbar = tqdm(pbar, total=nb)  # progress bar
@@ -476,6 +497,8 @@ def train(hyp, opt, device, tb_writer=None):
             targets,
             paths,
             _,
+            # REVIEW: get cv_imgs from __get_item__
+            cv_imgs,
         ) in (
             pbar
         ):  # batch -------------------------------------------------------------
@@ -522,7 +545,15 @@ def train(hyp, opt, device, tb_writer=None):
             with amp.autocast(enabled=cuda):
                 pred = model(imgs)  # forward
                 loss, loss_items = compute_loss_ota(
-                    pred, targets.to(device), imgs
+                    pred,
+                    targets.to(device),
+                    imgs,
+                    # REVIEW: add extra parameters
+                    model,
+                    i,
+                    epoch,
+                    tb_writer,
+                    cv_imgs,
                 )  # loss scaled by batch_size
                 if rank != -1:
                     loss *= (
@@ -550,7 +581,15 @@ def train(hyp, opt, device, tb_writer=None):
                     if torch.cuda.is_available()
                     else 0
                 )  # (GB)
-                s = ("%10s" * 2 + "%10.4g" * 6) % (
+                # REVIEW: tweak description
+                # s = ("%10s" * 2 + "%10.4g" * 6) % (
+                #     "%g/%g" % (epoch, epochs - 1),
+                #     mem,
+                #     *mloss,
+                #     targets.shape[0],
+                #     imgs.shape[-1],
+                # )
+                s = ("%10s" * 2 + "%10.4g" * 7) % (
                     "%g/%g" % (epoch, epochs - 1),
                     mem,
                     *mloss,
@@ -562,9 +601,19 @@ def train(hyp, opt, device, tb_writer=None):
                 # Plot
                 if plots and ni < 10:
                     f = save_dir / f"train_batch{ni}.jpg"  # filename
-                    Thread(
-                        target=plot_images, args=(imgs, targets, paths, f), daemon=True
-                    ).start()
+                    # REVIEW: add args
+                    args = {
+                        "images": imgs,
+                        "targets": targets,
+                        "paths": paths,
+                        "fname": f,
+                        "obb": opt.obb,
+                    }
+                    # REVIEW: change thread args to dict
+                    # Thread(
+                    #     target=plot_images, args=(imgs, targets, paths, f), daemon=True
+                    # ).start()
+                    Thread(target=plot_images, kargs=args, daemon=True).start()
                     # if tb_writer:
                     #     tb_writer.add_image(f, result, dataformats='HWC', global_step=epoch)
                     #     tb_writer.add_graph(torch.jit.trace(model, imgs, strict=False), [])  # add model graph
@@ -610,11 +659,17 @@ def train(hyp, opt, device, tb_writer=None):
                     compute_loss=compute_loss,
                     is_coco=is_coco,
                     v5_metric=opt.v5_metric,
+                    # REVIEW: add extra parameters
+                    tb_writer=tb_writer,
+                    epoch=epoch,
+                    obb=opt.obb,
                 )
 
             # Write
             with open(results_file, "a") as f:
-                f.write(s + "%10.4g" * 7 % results + "\n")  # append metrics, val_loss
+                # REVIEW: change output str count
+                # f.write(s + "%10.4g" * 7 % results + "\n")  # append metrics, val_loss
+                f.write(s + "%10.4g" * 8 % results + "\n")  # append metrics, val_loss
             if len(opt.name) and opt.bucket:
                 os.system(
                     "gsutil cp %s gs://%s/results/results%s.txt"
@@ -622,17 +677,20 @@ def train(hyp, opt, device, tb_writer=None):
                 )
 
             # Log
+            # REVIEW: add radian losses in TB
             tags = [
                 "train/box_loss",
                 "train/obj_loss",
-                "train/cls_loss",  # train loss
+                "train/cls_loss",
+                "train/rad_loss",  # train loss
                 "metrics/precision",
                 "metrics/recall",
                 "metrics/mAP_0.5",
                 "metrics/mAP_0.5:0.95",
                 "val/box_loss",
                 "val/obj_loss",
-                "val/cls_loss",  # val loss
+                "val/cls_loss",
+                "val/rad_loss",  # val loss
                 "x/lr0",
                 "x/lr1",
                 "x/lr2",
@@ -731,6 +789,10 @@ def train(hyp, opt, device, tb_writer=None):
                     plots=False,
                     is_coco=is_coco,
                     v5_metric=opt.v5_metric,
+                    # REVIEW: add extra parameters
+                    tb_writer=tb_writer,
+                    epoch=epoch,
+                    obb=opt.obb,
                 )
 
         # Strip optimizers
@@ -871,6 +933,8 @@ if __name__ == "__main__":
         action="store_true",
         help="assume maximum recall as 1.0 in AP calculation",
     )
+    # REVIEW: add obb flag
+    parser.add_argument("--obb", action="store_true", default=True, help="obb flag")
     opt = parser.parse_args()
 
     # Set DDP variables
