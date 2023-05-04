@@ -942,7 +942,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--overwrite", action="store_true", help="overwrite the project"
     )
-    parser.add_argument("--obb", action="store_true", help="set train obb flag")
+    parser.add_argument("--obb", action="store_true", default=True, help="set train obb flag")
     opt = parser.parse_args()
 
     # Set DDP variables
