@@ -596,12 +596,15 @@ class ComputeLoss:
                 # with open('targets.txt', 'a') as file:
                 #     [file.write('%11.5g ' * 4 % tuple(x) + '\n') for x in torch.cat((txy[i], twh[i]), 1)]
 
-                # REVIEW: add radian loss
-                # TODO: try GWD loss
-                # prad = xywhrad2xysigma(ps[:, :5])
-                # trad = xywhrad2xysigma(torch.cat((tbox[i], trad[i].view(-1, 1)), dim=1).unsqueeze(0))
-                # lrad += self.GWDrad(prad, trad)
+                # REVIEW: add radian loss with smoothL1 and GWD
                 lrad += self.SL1rad(prad.sigmoid(), trad[i])
+                # print(tbox[i].shape, trad[i].shape)
+                # print(len(prad), len(trad))
+                # print(self.GWDrad(prad, trad).view(-1, 1).shape)
+                # prad = xywhrad2xysigma(torch.cat((pbox, ps[:, 4].view(-1, 1)), dim=1))
+                # trad = xywhrad2xysigma(torch.cat((tbox[i], trad[i].view(-1, 1)), dim=1))
+                # for loss in self.GWDrad(prad, trad).view(-1, 1):
+                #     lrad += loss
 
             # REVIEW: change obji index from 4 to 5
             # obji = self.BCEobj(pi[..., 4], tobj)
@@ -853,13 +856,14 @@ class ComputeLossOTA:
                     # lcls += self.BCEcls(ps[:, 5:], t)  # BCE
                     lcls += self.BCEcls(ps[:, 6:], t)  # BCE
 
-                # TODO: try GWD loss
-                # print(ps[:, :5], torch.cat((tbox[i], trad[i].view(-1, 1)), dim=1).unsqueeze(0))
-                # exit(0)
-                # prad = xywhrad2xysigma(ps[:, :5])
-                # trad = xywhrad2xysigma(torch.cat((tbox[i], trad[i].view(-1, 1)), dim=1).unsqueeze(0))
-                # lrad += self.GWDrad(prad, trad)
+                # REVIEW: add radian loss with smoothL1 and GWD
                 lrad += self.SL1rad(ps[:, 4], trad)
+                # print(ps[:, :5].shape, torch.cat((selected_tbox, trad.view(-1, 1)), dim=1).shape)
+                # print(self.GWDrad(prad, trad).reshape(-1, 1), self.GWDrad(prad, trad).reshape(-1, 1).shape)
+                # prad = xywhrad2xysigma(torch.cat((pbox, ps[:, 4].view(-1, 1)), dim=1))
+                # trad = xywhrad2xysigma(torch.cat((selected_tbox, trad.view(-1, 1)), dim=1))
+                # for loss in self.GWDrad(prad, trad).view(-1, 1):
+                #     lrad += loss
 
                 # Append targets to text file
                 # with open('targets.txt', 'a') as file:
@@ -889,7 +893,6 @@ class ComputeLossOTA:
         return loss * bs, torch.cat((lbox, lobj, lcls, lrad, loss)).detach()
 
     def build_targets(self, p, targets, imgs):
-        # indices, anch = self.find_positive(p, targets)
         # REVIEW: add offsets
         indices, anch, offsets = self.find_3_positive(p, targets)
         # indices, anch = self.find_4_positive(p, targets)
@@ -1820,7 +1823,10 @@ class ComputeLossAuxOTA:
         return loss * bs, torch.cat((lbox, lobj, lcls, lrad, loss)).detach()
 
     def build_targets(self, p, targets, imgs):
+        # REVIEW: add offsets
         indices, anch, offsets = self.find_3_positive(p, targets)
+        # REVIEW: add device
+        # device = torch.device(targets.device)
 
         matching_bs = [[] for pp in p]
         matching_as = [[] for pp in p]
@@ -1869,7 +1875,9 @@ class ComputeLossAuxOTA:
                 all_anch.append(anch[i][idx])
                 # REVIEW: append all rad
                 all_rad.append(rad)
+                # REVIEW: send from_which_layer to device
                 from_which_layer.append(torch.ones(size=(len(b),)) * i)
+                # from_which_layer.append((torch.ones(size=(len(b),)) * i).to(device))
 
                 fg_pred = pi[b, a, gj, gi]
                 # REVIEW: fix cls and obj index
@@ -2013,7 +2021,10 @@ class ComputeLossAuxOTA:
         )
 
     def build_targets2(self, p, targets, imgs):
+        # REVIEW: add offsets
         indices, anch, offsets = self.find_5_positive(p, targets)
+        # REVIEW: add device
+        # device = torch.device(targets.device)
 
         matching_bs = [[] for pp in p]
         matching_as = [[] for pp in p]
@@ -2062,7 +2073,9 @@ class ComputeLossAuxOTA:
                 all_anch.append(anch[i][idx])
                 # REVIEW: append to all_rad
                 all_rad.append(rad)
+                # REVIEW: send from_which_layer to device
                 from_which_layer.append(torch.ones(size=(len(b),)) * i)
+                # from_which_layer.append((torch.ones(size=(len(b),)) * i).to(device))
 
                 fg_pred = pi[b, a, gj, gi]
                 # REVIEW: fix obj and cls indices
