@@ -489,7 +489,7 @@ class ComputeLoss:
         # REVIEW: add extra loss functions
         SL1rad = nn.SmoothL1Loss()
         MSErad = nn.MSELoss()
-        GWDrad = GWDLoss()
+        GWDrad = GWDLoss
 
         # Class label smoothing https://arxiv.org/pdf/1902.04103.pdf eqn 3
         self.cp, self.cn = smooth_BCE(
@@ -724,9 +724,10 @@ class ComputeLossOTA:
             pos_weight=torch.tensor([h["obj_pw"]], device=device)
         )
 
-        # REVIEW: add smoothL1 and MSE
+        # REVIEW: add smoothL1, MSE, GWD
         SL1rad = nn.SmoothL1Loss()
         MSErad = nn.MSELoss()
+        GWDrad = GWDLoss
 
         # Class label smoothing https://arxiv.org/pdf/1902.04103.pdf eqn 3
         self.cp, self.cn = smooth_BCE(
@@ -751,6 +752,7 @@ class ComputeLossOTA:
             self.BCEobj,
             self.SL1rad,
             self.MSErad,
+            self.GWDrad,
             self.gr,
             self.hyp,
             self.autobalance,
@@ -759,6 +761,7 @@ class ComputeLossOTA:
             BCEobj,
             SL1rad,
             MSErad,
+            GWDrad,
             model.gr,
             h,
             autobalance,
@@ -850,6 +853,12 @@ class ComputeLossOTA:
                     # lcls += self.BCEcls(ps[:, 5:], t)  # BCE
                     lcls += self.BCEcls(ps[:, 6:], t)  # BCE
 
+                # TODO: try GWD loss
+                # print(ps[:, :5], torch.cat((tbox[i], trad[i].view(-1, 1)), dim=1).unsqueeze(0))
+                # exit(0)
+                # prad = xywhrad2xysigma(ps[:, :5])
+                # trad = xywhrad2xysigma(torch.cat((tbox[i], trad[i].view(-1, 1)), dim=1).unsqueeze(0))
+                # lrad += self.GWDrad(prad, trad)
                 lrad += self.SL1rad(ps[:, 4], trad)
 
                 # Append targets to text file
@@ -953,6 +962,8 @@ class ComputeLossOTA:
                 )  # / 8.
                 # REVIEW: add activation function for radian value and append
                 prad = fg_pred[:, 4].sigmoid()
+                p_rad.append(prad)
+
                 pxywh = torch.cat([pxy, pwh], dim=-1)
                 pxyxy = xywh2xyxy(pxywh)
                 pxyxys.append(pxyxy)
