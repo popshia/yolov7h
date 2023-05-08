@@ -1,9 +1,10 @@
 # Loss functions
 
+import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
 
 from utils.general import (
     bbox_alpha_iou,

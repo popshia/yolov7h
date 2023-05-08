@@ -1,5 +1,5 @@
-train: /home/lab602.11077009/.pipeline/11077009/datasets/Intersection(GT)/train.txt
-val: /home/lab602.11077009/.pipeline/11077009/datasets/Intersection(GT)/val.txt
+train: /home/lab602.11077009/.pipeline/11077009/datasets/Intersection(GT_fix)/train.txt
+val: /home/lab602.11077009/.pipeline/11077009/datasets/Intersection(GT_fix)/val.txt
 
 # number of classes
 nc: 8

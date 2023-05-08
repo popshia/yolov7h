@@ -544,8 +544,8 @@ def train(hyp, opt, device, tb_writer=None):
 
             # Forward
             # REVIEW: disable amp for avoiding further precision errors
-            with amp.autocast(enabled=cuda):
             # with amp.autocast(enabled=False):
+            with amp.autocast(enabled=cuda):
                 pred = model(imgs)  # forward
                 # REVIEW: add extra parameters in both compute loss functions
                 if "loss_ota" not in hyp or hyp["loss_ota"] == 1:
