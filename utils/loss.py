@@ -491,6 +491,7 @@ class ComputeLoss:
         SL1rad = nn.SmoothL1Loss()
         MSErad = nn.MSELoss()
         GWDrad = GWDLoss
+        KLDrad = F.kl_div()
 
         # Class label smoothing https://arxiv.org/pdf/1902.04103.pdf eqn 3
         self.cp, self.cn = smooth_BCE(
@@ -515,12 +516,13 @@ class ComputeLoss:
         (
             self.BCEcls,
             self.BCEobj,
+            self.SL1rad,
+            self.GWDrad,
+            self.KLDrad,
             self.gr,
             self.hyp,
             self.autobalance,
-            self.SL1rad,
-            self.GWDrad,
-        ) = (BCEcls, BCEobj, model.gr, h, autobalance, SL1rad, GWDrad)
+        ) = (BCEcls, BCEobj, SL1rad, GWDrad, KLDrad, model.gr, h, autobalance)
         for k in "na", "nc", "nl", "anchors":
             setattr(self, k, getattr(det, k))
 
@@ -596,8 +598,9 @@ class ComputeLoss:
 
                 # REVIEW: add prad
                 prad = ps[:, 4]
-                # REVIEW: add radian loss with smoothL1 and GWD
+                # REVIEW: add radian loss with smoothL1
                 lrad += self.SL1rad(prad.sigmoid(), trad[i])
+                # REVIEW: add GLD
                 # print(tbox[i].shape, trad[i].shape)
                 # print(len(prad), len(trad))
                 # print(self.GWDrad(prad, trad).view(-1, 1).shape)
@@ -605,6 +608,10 @@ class ComputeLoss:
                 # t_rad = xywhrad2xysigma(torch.cat((tbox[i], trad[i].view(-1, 1)), dim=1))
                 # for loss in self.GWDrad(p_rad, t_rad).view(-1, 1):
                 #     lrad += loss
+                # REVIEW: add KLD
+                # p_rad = F.softmax(prad, dim=1)
+                # t_rad = F.log_softmax(trad[i], dim=1)
+                # lrad += self.KLDrad(p_rad, t_rad, reduction="none").sum(-1)
 
             # REVIEW: change obji index from 4 to 5
             # obji = self.BCEobj(pi[..., 4], tobj)
@@ -731,6 +738,7 @@ class ComputeLossOTA:
         SL1rad = nn.SmoothL1Loss()
         MSErad = nn.MSELoss()
         GWDrad = GWDLoss
+        KLDrad = F.kl_div()
 
         # Class label smoothing https://arxiv.org/pdf/1902.04103.pdf eqn 3
         self.cp, self.cn = smooth_BCE(
@@ -756,6 +764,7 @@ class ComputeLossOTA:
             self.SL1rad,
             self.MSErad,
             self.GWDrad,
+            self.KLDrad,
             self.gr,
             self.hyp,
             self.autobalance,
@@ -765,6 +774,7 @@ class ComputeLossOTA:
             SL1rad,
             MSErad,
             GWDrad,
+            KLDrad,
             model.gr,
             h,
             autobalance,
@@ -858,12 +868,17 @@ class ComputeLossOTA:
 
                 # REVIEW: add radian loss with smoothL1 and GWD
                 lrad += self.SL1rad(ps[:, 4], trad)
+                # REVIEW: add GWD
                 # print(ps[:, :5].shape, torch.cat((selected_tbox, trad.view(-1, 1)), dim=1).shape)
                 # print(self.GWDrad(prad, trad).reshape(-1, 1), self.GWDrad(prad, trad).reshape(-1, 1).shape)
                 # prad = xywhrad2xysigma(torch.cat((pbox, ps[:, 4].view(-1, 1)), dim=1))
                 # trad = xywhrad2xysigma(torch.cat((selected_tbox, trad.view(-1, 1)), dim=1))
                 # for loss in self.GWDrad(prad, trad).view(-1, 1):
                 #     lrad += loss
+                # REVIEW: add KLD
+                # p_rad = F.softmax(ps[:, 4], dim=1)
+                # t_rad = F.log_softmax(trad, dim=1)
+                # lrad += self.KLDrad(p_rad, t_rad, reduction="none").sum(-1)
 
                 # Append targets to text file
                 # with open('targets.txt', 'a') as file:
