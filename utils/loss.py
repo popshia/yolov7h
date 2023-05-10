@@ -572,9 +572,6 @@ class ComputeLoss:
                 )  # iou(prediction, target)
                 lbox += (1.0 - iou).mean()  # iou loss
 
-                # REVIEW: add prad
-                prad = ps[:, 4]
-
                 # Objectness
                 tobj[b, a, gj, gi] = (1.0 - self.gr) + self.gr * iou.detach().clamp(
                     0
@@ -597,14 +594,16 @@ class ComputeLoss:
                 # with open('targets.txt', 'a') as file:
                 #     [file.write('%11.5g ' * 4 % tuple(x) + '\n') for x in torch.cat((txy[i], twh[i]), 1)]
 
+                # REVIEW: add prad
+                prad = ps[:, 4]
                 # REVIEW: add radian loss with smoothL1 and GWD
                 lrad += self.SL1rad(prad.sigmoid(), trad[i])
                 # print(tbox[i].shape, trad[i].shape)
                 # print(len(prad), len(trad))
                 # print(self.GWDrad(prad, trad).view(-1, 1).shape)
-                # prad = xywhrad2xysigma(torch.cat((pbox, ps[:, 4].view(-1, 1)), dim=1))
-                # trad = xywhrad2xysigma(torch.cat((tbox[i], trad[i].view(-1, 1)), dim=1))
-                # for loss in self.GWDrad(prad, trad).view(-1, 1):
+                # p_rad = xywhrad2xysigma(torch.cat((pbox, ps[:, 4].view(-1, 1)), dim=1))
+                # t_rad = xywhrad2xysigma(torch.cat((tbox[i], trad[i].view(-1, 1)), dim=1))
+                # for loss in self.GWDrad(p_rad, t_rad).view(-1, 1):
                 #     lrad += loss
 
             # REVIEW: change obji index from 4 to 5
