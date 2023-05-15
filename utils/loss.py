@@ -491,7 +491,6 @@ class ComputeLoss:
         SL1rad = nn.SmoothL1Loss()
         MSErad = nn.MSELoss()
         GWDrad = GWDLoss
-        KLDrad = F.kl_div()
 
         # Class label smoothing https://arxiv.org/pdf/1902.04103.pdf eqn 3
         self.cp, self.cn = smooth_BCE(
@@ -518,11 +517,10 @@ class ComputeLoss:
             self.BCEobj,
             self.SL1rad,
             self.GWDrad,
-            self.KLDrad,
             self.gr,
             self.hyp,
             self.autobalance,
-        ) = (BCEcls, BCEobj, SL1rad, GWDrad, KLDrad, model.gr, h, autobalance)
+        ) = (BCEcls, BCEobj, SL1rad, GWDrad, model.gr, h, autobalance)
         for k in "na", "nc", "nl", "anchors":
             setattr(self, k, getattr(det, k))
 
@@ -604,14 +602,9 @@ class ComputeLoss:
                 # print(tbox[i].shape, trad[i].shape)
                 # print(len(prad), len(trad))
                 # print(self.GWDrad(prad, trad).view(-1, 1).shape)
-                # p_rad = xywhrad2xysigma(torch.cat((pbox, ps[:, 4].view(-1, 1)), dim=1))
-                # t_rad = xywhrad2xysigma(torch.cat((tbox[i], trad[i].view(-1, 1)), dim=1))
-                # for loss in self.GWDrad(p_rad, t_rad).view(-1, 1):
-                #     lrad += loss
-                # REVIEW: add KLD
-                # p_rad = F.softmax(prad, dim=1)
-                # t_rad = F.log_softmax(trad[i], dim=1)
-                # lrad += self.KLDrad(p_rad, t_rad, reduction="none").sum(-1)
+                # p_rad = torch.cat((pbox, ps[:, 4].view(-1, 1)), dim=1)
+                # t_rad = torch.cat((tbox[i], trad[i].view(-1, 1)), dim=1)
+                # lbox += self.GWDrad(p_rad, t_rad).sum(-1) 
 
             # REVIEW: change obji index from 4 to 5
             # obji = self.BCEobj(pi[..., 4], tobj)
@@ -738,7 +731,6 @@ class ComputeLossOTA:
         SL1rad = nn.SmoothL1Loss()
         MSErad = nn.MSELoss()
         GWDrad = GWDLoss
-        KLDrad = F.kl_div()
 
         # Class label smoothing https://arxiv.org/pdf/1902.04103.pdf eqn 3
         self.cp, self.cn = smooth_BCE(
@@ -764,7 +756,6 @@ class ComputeLossOTA:
             self.SL1rad,
             self.MSErad,
             self.GWDrad,
-            self.KLDrad,
             self.gr,
             self.hyp,
             self.autobalance,
@@ -774,7 +765,6 @@ class ComputeLossOTA:
             SL1rad,
             MSErad,
             GWDrad,
-            KLDrad,
             model.gr,
             h,
             autobalance,
@@ -871,14 +861,9 @@ class ComputeLossOTA:
                 # REVIEW: add GWD
                 # print(ps[:, :5].shape, torch.cat((selected_tbox, trad.view(-1, 1)), dim=1).shape)
                 # print(self.GWDrad(prad, trad).reshape(-1, 1), self.GWDrad(prad, trad).reshape(-1, 1).shape)
-                # prad = xywhrad2xysigma(torch.cat((pbox, ps[:, 4].view(-1, 1)), dim=1))
-                # trad = xywhrad2xysigma(torch.cat((selected_tbox, trad.view(-1, 1)), dim=1))
-                # for loss in self.GWDrad(prad, trad).view(-1, 1):
-                #     lrad += loss
-                # REVIEW: add KLD
-                # p_rad = F.softmax(ps[:, 4], dim=1)
-                # t_rad = F.log_softmax(trad, dim=1)
-                # lrad += self.KLDrad(p_rad, t_rad, reduction="none").sum(-1)
+                # p_rad = torch.cat((pbox, ps[:, 4].view(-1, 1)), dim=1)
+                # t_rad = torch.cat((selected_tbox, trad.view(-1, 1)), dim=1)
+                # lbox += self.GWDrad(p_rad, t_rad).sum(-1)
 
                 # Append targets to text file
                 # with open('targets.txt', 'a') as file:
@@ -2400,7 +2385,7 @@ class ComputeLossAuxOTA:
         return indices, anch, offsets_list
 
 
-def GWDLoss(pred, target, fun="log1p", tau=1.0, alpha=1.0, normalize=True):
+def GWDLoss(pred, target, fun="sqrt", tau=2.0, alpha=1.0, normalize=True):
     """Gaussian Wasserstein distance loss.
     Derivation and simplification:
         Given any positive-definite symmetrical 2*2 matrix Z:
@@ -2440,21 +2425,39 @@ def GWDLoss(pred, target, fun="log1p", tau=1.0, alpha=1.0, normalize=True):
         loss (torch.Tensor)
 
     """
-    xy_p, sigma_p = pred
-    xy_t, sigma_t = target
+    # xy_p, sigma_p = xywhrad2xysigma(pred)
+    # xy_t, sigma_t = xywhrad2xysigma(target)
+    xy_p, R_p, S_p = xywhrad2xysigma(pred)
+    xy_t, R_t, S_t = xywhrad2xysigma(target)
 
     xy_distance = (xy_p - xy_t).square().sum(dim=-1)
-    whr_distance = sigma_p.diagonal(dim1=-2, dim2=-1).sum(dim=-1)
-    whr_distance = whr_distance + sigma_t.diagonal(dim1=-2, dim2=-1).sum(dim=-1)
 
-    _t_tr = (sigma_p.bmm(sigma_t)).diagonal(dim1=-2, dim2=-1).sum(dim=-1)
-    _t_det_sqrt = (sigma_p.det() * sigma_t.det()).clamp(1e-7).sqrt()
-    whr_distance = whr_distance + (-2) * ((_t_tr + 2 * _t_det_sqrt).clamp(1e-7).sqrt())
+    Sigma_p = R_p.matmul(S_p.square()).matmul(R_p.permute(0, 2, 1))
+    Sigma_t = R_t.matmul(S_t.square()).matmul(R_t.permute(0, 2, 1))
 
-    distance = (xy_distance + alpha * alpha * whr_distance).clamp(1e-7).sqrt()
+    # whr_distance = sigma_p.diagonal(dim1=-2, dim2=-1).sum(dim=-1)
+    # whr_distance = whr_distance + sigma_t.diagonal(dim1=-2, dim2=-1).sum(dim=-1)
+    whr_distance = S_p.diagonal(dim1=-2, dim2=-1).square().sum(dim=-1)
+    whr_distance = whr_distance + S_t.diagonal(dim1=-2, dim2=-1).square().sum(dim=-1)
+    _t = Sigma_p.matmul(Sigma_t)
+
+    # _t_tr = (sigma_p.bmm(sigma_t)).diagonal(dim1=-2, dim2=-1).sum(dim=-1)
+    # _t_det_sqrt = (sigma_p.det() * sigma_t.det()).clamp(1e-7).sqrt()
+    # whr_distance = whr_distance + (-2) * ((_t_tr + 2 * _t_det_sqrt).clamp(1e-7).sqrt())
+    _t_tr = _t.diagonal(dim1=-2, dim2=-1).sum(dim=-1)
+    _t_det_sqrt = S_p.diagonal(dim1=-2, dim2=-1).prod(dim=-1)
+    _t_det_sqrt = _t_det_sqrt * S_t.diagonal(dim1=-2, dim2=-1).prod(dim=-1)
+    whr_distance = whr_distance + (-2) * ((_t_tr + 2 * _t_det_sqrt).clamp(0).sqrt())
+
+    # distance = (xy_distance + alpha * alpha * whr_distance).clamp(1e-7).sqrt()
+    distance = (xy_distance + alpha * alpha * whr_distance).clamp(0)
 
     if normalize:
-        scale = 2 * (_t_det_sqrt.clamp(1e-7).sqrt().clamp(1e-7).sqrt()).clamp(1e-7)
+        # scale = 2 * (_t_det_sqrt.clamp(1e-7).sqrt().clamp(1e-7).sqrt()).clamp(1e-7)
+        # distance = distance / scale
+        wh_p = pred[..., 2:4].clamp(min=1e-7, max=1e7)
+        wh_t = target[..., 2:4].clamp(min=1e-7, max=1e7)
+        scale = ((wh_p.log() + wh_t.log()).sum(dim=-1) / 4).exp()
         distance = distance / scale
 
     return PostProcess(distance, fun=fun, tau=tau)
@@ -2475,7 +2478,8 @@ def PostProcess(distance, fun="log1p", tau=1.0):
     if fun == "log1p":
         distance = torch.log1p(distance)
     elif fun == "sqrt":
-        distance = torch.sqrt(distance.clamp(1e-7))
+        # distance = torch.sqrt(distance.clamp(1e-7))
+        distance = torch.sqrt(distance)
     elif fun == "none":
         pass
     else:
@@ -2503,8 +2507,8 @@ def xywhrad2xysigma(xywhr):
     assert _shape[-1] == 5
     xy = xywhr[:, :2]
     wh = xywhr[:, 2:4].clamp(min=1e-7, max=1e7).reshape(-1, 2)
-    r = xywhr[:, 4] * math.pi * 2
-    # r = xywhr[..., 4]*math.pi*2+math.pi/2
+    # r = xywhr[:, 4] * math.pi * 2
+    r = xywhr[..., 4]*math.pi*2+math.pi/2
     cos_r = torch.cos(r)
     sin_r = torch.sin(r)
     R = torch.stack((cos_r, -sin_r, sin_r, cos_r), dim=-1).reshape(-1, 2, 2)
@@ -2512,4 +2516,5 @@ def xywhrad2xysigma(xywhr):
 
     sigma = R.bmm(S.square()).bmm(R.permute(0, 2, 1)).reshape(_shape[:-1] + (2, 2))
 
-    return xy, sigma
+    # return xy, sigma
+    return xy, R, S
