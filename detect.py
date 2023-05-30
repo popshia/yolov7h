@@ -299,7 +299,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--no-trace", action="store_true", help="don`t trace model")
     # REVIEW: add obb flag
-    parser.add_argument("--obb", action="store_true", default=True, help="obb flag")
+    parser.add_argument("--obb", action="store_true", help="obb flag")
     opt = parser.parse_args()
     print(opt)
     # check_requirements(exclude=('pycocotools', 'thop'))

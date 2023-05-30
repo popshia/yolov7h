@@ -13,6 +13,7 @@ from utils.general import (
     box_diou,
     box_giou,
     box_iou,
+    mine2opencv,
     xywh2xyxy,
 )
 from utils.plots import plot_targets_and_anchors
@@ -602,9 +603,13 @@ class ComputeLoss:
                 # print(tbox[i].shape, trad[i].shape)
                 # print(len(prad), len(trad))
                 # print(self.GWDrad(prad, trad).view(-1, 1).shape)
-                # p_rad = torch.cat((pbox, ps[:, 4].view(-1, 1)), dim=1)
+                # p_convert = ps[:, 4].view(-1, 1)
+                # p_convert = torch.where(temp>1, temp-temp.int(), temp)
+                # p_rad = torch.cat((pbox, p_convert), dim=1)
                 # t_rad = torch.cat((tbox[i], trad[i].view(-1, 1)), dim=1)
-                # lbox += self.GWDrad(p_rad, t_rad).sum(-1) 
+                # print(p_rad[0:5], t_rad[0:5])
+                # print(mine2opencv(p_rad[0:5]), mine2opencv(t_rad[0:5]))
+                # lrad += self.GWDrad(mine2opencv(p_rad), mine2opencv(t_rad)).mean() 
 
             # REVIEW: change obji index from 4 to 5
             # obji = self.BCEobj(pi[..., 4], tobj)
@@ -836,7 +841,7 @@ class ComputeLossOTA:
                 iou = bbox_iou(
                     pbox.T, selected_tbox, x1y1x2y2=False, CIoU=True
                 )  # iou(prediction, target)
-                lbox += (1.0 - iou).mean()  # iou loss
+                # lbox += (1.0 - iou).mean()  # iou loss
 
                 # Objectness
                 tobj[b, a, gj, gi] = (1.0 - self.gr) + self.gr * iou.detach().clamp(
@@ -857,10 +862,11 @@ class ComputeLossOTA:
                     lcls += self.BCEcls(ps[:, 6:], t)  # BCE
 
                 # REVIEW: add radian loss with smoothL1 and GWD
-                lrad += self.SL1rad(ps[:, 4], trad)
+                lrad += self.SL1rad(ps[:, 4].sigmoid(), trad)
                 # REVIEW: add GWD
-                # print(ps[:, :5].shape, torch.cat((selected_tbox, trad.view(-1, 1)), dim=1).shape)
-                # print(self.GWDrad(prad, trad).reshape(-1, 1), self.GWDrad(prad, trad).reshape(-1, 1).shape)
+                # print(len(pbox), ps[:, 4].view(-1, 1).shape, selected_tbox.shape, trad.view(-1, 1).shape)
+                # exit(0)
+                # print(self.GWDrad(p_rad, trad).reshape(-1, 1), self.GWDrad(p_rad, trad).reshape(-1, 1).shape)
                 # p_rad = torch.cat((pbox, ps[:, 4].view(-1, 1)), dim=1)
                 # t_rad = torch.cat((selected_tbox, trad.view(-1, 1)), dim=1)
                 # lbox += self.GWDrad(p_rad, t_rad).sum(-1)
@@ -2455,15 +2461,15 @@ def GWDLoss(pred, target, fun="sqrt", tau=2.0, alpha=1.0, normalize=True):
     if normalize:
         # scale = 2 * (_t_det_sqrt.clamp(1e-7).sqrt().clamp(1e-7).sqrt()).clamp(1e-7)
         # distance = distance / scale
-        wh_p = pred[..., 2:4].clamp(min=1e-7, max=1e7)
-        wh_t = target[..., 2:4].clamp(min=1e-7, max=1e7)
+        wh_p = pred[:, 2:4].clamp(min=1e-7, max=1e7)
+        wh_t = target[:, 2:4].clamp(min=1e-7, max=1e7)
         scale = ((wh_p.log() + wh_t.log()).sum(dim=-1) / 4).exp()
         distance = distance / scale
 
     return PostProcess(distance, fun=fun, tau=tau)
 
 
-def PostProcess(distance, fun="log1p", tau=1.0):
+def PostProcess(distance, fun="log", tau=1.0):
     """Convert distance to loss.
 
     Args:
@@ -2475,7 +2481,7 @@ def PostProcess(distance, fun="log1p", tau=1.0):
     Returns:
         loss (torch.Tensor)
     """
-    if fun == "log1p":
+    if fun == "log":
         distance = torch.log1p(distance)
     elif fun == "sqrt":
         # distance = torch.sqrt(distance.clamp(1e-7))
@@ -2508,7 +2514,8 @@ def xywhrad2xysigma(xywhr):
     xy = xywhr[:, :2]
     wh = xywhr[:, 2:4].clamp(min=1e-7, max=1e7).reshape(-1, 2)
     # r = xywhr[:, 4] * math.pi * 2
-    r = xywhr[..., 4]*math.pi*2+math.pi/2
+    # r = xywhr[:, 4]*math.pi*2+math.pi/2
+    r = xywhr[:, 4] / 180 * math.pi
     cos_r = torch.cos(r)
     sin_r = torch.sin(r)
     R = torch.stack((cos_r, -sin_r, sin_r, cos_r), dim=-1).reshape(-1, 2, 2)

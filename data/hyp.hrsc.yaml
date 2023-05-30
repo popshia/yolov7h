@@ -21,8 +21,7 @@ fl_gamma: 0.0  # focal loss gamma (efficientDet default gamma=1.5)
 hsv_h: 0.015  # image HSV-Hue augmentation (fraction)
 hsv_s: 0.7  # image HSV-Saturation augmentation (fraction)
 hsv_v: 0.4  # image HSV-Value augmentation (fraction)
-# degrees: 0.0  # image rotation (+/- deg) 0
-degrees: 180  # image rotation (+/- deg) 0
+degrees: 0.0  # image rotation (+/- deg) 0
 translate: 0.0  # image translation (+/- fraction) 0.2
 scale: 0.5  # image scale (+/- gain) 0.9
 shear: 0.0  # image shear (+/- deg)
@@ -33,4 +32,4 @@ mosaic: 1.0  # image mosaic (probability)
 mixup: 0.15  # image mixup (probability)
 copy_paste: 0.0  # image copy paste (probability)
 paste_in: 0  # image copy paste (probability), use 0 for faster training 0.15
-loss_ota: 1 # use ComputeLossOTA, use 0 for faster training 0
+loss_ota: 0 # use ComputeLossOTA, use 0 for faster training 0

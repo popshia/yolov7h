@@ -694,8 +694,8 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         hyp = self.hyp
         mosaic = self.mosaic and random.random() < hyp["mosaic"]
         # FIXME: hbb can't do mosaic, disable temporary
-        if not self.obb:
-            mosaic = False
+        # if not self.obb:
+        #     mosaic = False
         if mosaic:
             # Load mosaic
             if random.random() < 0.8:
