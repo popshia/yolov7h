@@ -110,7 +110,6 @@ def create_dataloader(
     quad=False,
     prefix="",
     obb=False,
-    training_type=None,
 ):
     # Make sure only the first process in DDP process the dataset first, and the following others can use the cache
     with torch_distributed_zero_first(rank):
@@ -129,7 +128,6 @@ def create_dataloader(
             prefix=prefix,
             # REVIEW: add extra arguments
             obb=obb,
-            training_type=training_type,
         )
 
     batch_size = min(batch_size, len(dataset))
@@ -458,7 +456,6 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         prefix="",
         # REVIEW: add extra arguments
         obb=False,
-        training_type=None,
     ):
         self.img_size = img_size
         self.augment = augment
@@ -473,7 +470,6 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         self.path = path
         # REVIEW: add obb flag and training_type
         self.obb = obb
-        self.training_type = training_type
         # self.albumentations = Albumentations() if augment else None
 
         try:
@@ -829,9 +825,6 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                             label[5] = 0.25 + (0.25 - label[5])
                         elif 0.5 < label[5] < 1:
                             label[5] = 0.75 + (0.75 - label[5])
-
-        # REVIEW: add target converting
-        # labels = convert_target_format(labels, self.training_type)
 
         # REVIEW: change output size
         # labels_out = torch.zeros((nL, 6))
