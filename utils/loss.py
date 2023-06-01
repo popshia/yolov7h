@@ -609,7 +609,7 @@ class ComputeLoss:
                 # t_rad = torch.cat((tbox[i], trad[i].view(-1, 1)), dim=1)
                 # print(p_rad[0:5], t_rad[0:5])
                 # print(mine2opencv(p_rad[0:5]), mine2opencv(t_rad[0:5]))
-                # lrad += self.GWDrad(mine2opencv(p_rad), mine2opencv(t_rad)).mean() 
+                # lrad += self.GWDrad(mine2opencv(p_rad), mine2opencv(t_rad)).mean()
 
             # REVIEW: change obji index from 4 to 5
             # obji = self.BCEobj(pi[..., 4], tobj)

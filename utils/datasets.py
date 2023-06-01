@@ -110,6 +110,7 @@ def create_dataloader(
     quad=False,
     prefix="",
     obb=False,
+    training_type=None,
 ):
     # Make sure only the first process in DDP process the dataset first, and the following others can use the cache
     with torch_distributed_zero_first(rank):
@@ -128,6 +129,7 @@ def create_dataloader(
             prefix=prefix,
             # REVIEW: add extra arguments
             obb=obb,
+            training_type=training_type,
         )
 
     batch_size = min(batch_size, len(dataset))
@@ -456,6 +458,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         prefix="",
         # REVIEW: add extra arguments
         obb=False,
+        training_type=None,
     ):
         self.img_size = img_size
         self.augment = augment
@@ -468,8 +471,9 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         self.mosaic_border = [-img_size // 2, -img_size // 2]
         self.stride = stride
         self.path = path
-        # REVIEW: add obb flag
+        # REVIEW: add obb flag and training_type
         self.obb = obb
+        self.training_type = training_type
         # self.albumentations = Albumentations() if augment else None
 
         try:
@@ -826,14 +830,18 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                         elif 0.5 < label[5] < 1:
                             label[5] = 0.75 + (0.75 - label[5])
 
-        # REVIEW: change output size from 6 to 7
+        # REVIEW: add target converting
+        # labels = convert_target_format(labels, self.training_type)
+
+        # REVIEW: change output size
         # labels_out = torch.zeros((nL, 6))
-        labels_out = torch.zeros((nL, 7))
+        labels_out = torch.zeros((nL, labels.shape[1] + 1))
         if nL:
             labels_out[:, 1:] = torch.from_numpy(labels)
 
         # print(self.img_files[index])
         # print(labels_out)
+        # exit(0)
 
         # REVIEW: add cv_img
         cv_img = img.copy()
@@ -1956,3 +1964,33 @@ def load_segmentations(self, index):
     # print(key)
     # /work/handsomejw66/coco17/
     return self.segs[key]
+
+
+def convert_target_format(targets, extra_outs):
+    """
+    xywhtheta to other format
+
+    xywh
+    theta in diameter
+    """
+
+    if extra_outs.find("sincos") != -1:
+        # convert theta to sin_theta cos_theta
+        return np.concatenate(
+            (
+                targets[:, :-1],
+                np.sin(float(targets[:, -1]) * math.pi * 2).reshape(-1, 1),
+                np.cos(float(targets[:, -1]) * math.pi * 2).reshape(-1, 1),
+            ),
+            axis=1,
+        )
+    elif extra_outs.find("dhxdhy") != -1:
+        # convert theta to headx heady
+        rbox4pts = xywhrad2poly(targets[:, 1:])
+        hxy = (rbox4pts[:, [0, 1]] + rbox4pts[:, [2, 3]]) / 2
+        return np.concatenate((targets[:, :-1], hxy), axis=1)
+    elif extra_outs.find("rad") != -1:
+        return targets
+    else:
+        print("No supported train mode!")
+        exit(0)

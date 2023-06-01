@@ -1173,12 +1173,10 @@ def single_xywhrad2poly(box, width=-1, height=-1, denormalize=True):
     if isinstance(box, torch.Tensor):
         my_sin = torch.sin
         my_cos = torch.cos
-        # x = x.double()  # 之前不加沒事，現在不加會突然出現奇怪的overflow error
         clone_box = box.clone()
     elif isinstance(box, np.ndarray):
         my_sin = np.sin
         my_cos = np.cos
-        # box = box.astype(np.float64)  # 之前不加沒事，現在不加會突然出現奇怪的overflow error
         clone_box = np.copy(box)
 
     # get center, w, h, rad
@@ -1338,25 +1336,24 @@ def mine2opencv(box):
             box[i, 2] = box[i, 3]
             box[i, 3] = temp
             # convert radian to angle
-            angle = int(float(rad)*360)
+            angle = int(float(rad) * 360)
         elif 0.25 <= rad < 0.5:
             # convert radian to angle
-            angle = int((float(rad)-0.25)*360)
+            angle = int((float(rad) - 0.25) * 360)
         elif 0.5 <= rad < 0.75:
             # swap w h
             temp = box[i, 2].clone()
             box[i, 2] = box[i, 3]
             box[i, 3] = temp
             # convert radian to angle
-            angle = int((float(rad)-0.5)*360)
+            angle = int((float(rad) - 0.5) * 360)
         elif 0.75 <= rad <= 1:
             # convert radian to angle
-            angle = int((float(rad)-0.75)*360)
+            angle = int((float(rad) - 0.75) * 360)
 
         if angle == 0:
             box[i, 4] = 90
         else:
-            box[i, 4] = angle 
+            box[i, 4] = angle
 
-    
     return box

@@ -344,6 +344,7 @@ def train(hyp, opt, device, tb_writer=None):
         prefix=colorstr("train: "),
         # REVIEW: add extra arguments
         obb=opt.obb,
+        training_type=opt.training_type,
     )
     mlc = np.concatenate(dataset.labels, 0)[:, 0].max()  # max label class
     nb = len(dataloader)  # number of batches
@@ -374,6 +375,7 @@ def train(hyp, opt, device, tb_writer=None):
             prefix=colorstr("val: "),
             # REVIEW: add extra arguments
             obb=opt.obb,
+            training_type=opt.training_type,
         )[0]
 
         if not opt.resume:
@@ -944,9 +946,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--overwrite", action="store_true", help="overwrite the project"
     )
-    parser.add_argument(
-        "--obb", action="store_true", help="set train obb flag"
-    )
+    parser.add_argument("--obb", action="store_true", help="set train obb flag")
+    parser.add_argument("--training-type", help="set training type")
     opt = parser.parse_args()
 
     # Set DDP variables
