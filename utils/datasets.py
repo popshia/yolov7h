@@ -828,7 +828,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
 
         # REVIEW: change output size
         # labels_out = torch.zeros((nL, 6))
-        labels_out = torch.zeros((nL, labels.shape[1] + 1))
+        labels_out = torch.zeros((nL, 7))
         if nL:
             labels_out[:, 1:] = torch.from_numpy(labels)
 

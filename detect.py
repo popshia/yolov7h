@@ -1,4 +1,6 @@
 import argparse
+import os
+import shutil
 import time
 from pathlib import Path
 
@@ -46,6 +48,13 @@ def detect(save_img=False):
         or source.lower().startswith(("rtsp://", "rtmp://", "http://", "https://"))
     )
 
+    if opt.overwrite:
+        overwrite_path = os.path.join(os.getcwd(), "runs", "detect", opt.name)
+        if os.path.exists(overwrite_path):
+            print(f"Overwrite Path: {opt.name}")
+            shutil.rmtree(overwrite_path)
+        else:
+            print("NO DIRECTORY TO OVERWRITE !!")
     # Directories
     save_dir = Path(
         increment_path(Path(opt.project) / opt.name, exist_ok=opt.exist_ok)
@@ -193,7 +202,7 @@ def detect(save_img=False):
                                 im0,
                                 label=label,
                                 color=colors[int(cls)],
-                                line_thickness=1,
+                                line_thickness=2,
                                 obb=opt.obb,
                             )
                         else:
@@ -300,6 +309,9 @@ if __name__ == "__main__":
     parser.add_argument("--no-trace", action="store_true", help="don`t trace model")
     # REVIEW: add obb flag
     parser.add_argument("--obb", action="store_true", help="obb flag")
+    parser.add_argument(
+        "--overwrite", action="store_true", help="overwrite the project"
+    )
     opt = parser.parse_args()
     print(opt)
     # check_requirements(exclude=('pycocotools', 'thop'))

@@ -67,7 +67,7 @@ def plot_one_box(
     img,
     color=None,
     label=None,
-    line_thickness=3,
+    line_thickness=0,
     # REVIEW: add extra arguments
     obb=False,
 ):
@@ -80,7 +80,7 @@ def plot_one_box(
     if obb:
         # REVIEW: change x1, y1, x2, y2 to x1, y1, x2, y2..., x4, y4
         poly = single_xywhrad2poly(x, denormalize=False)
-        c1 = poly[1]
+        c1 = np.array([x[0], x[1]]).astype(int)
 
         # REVIEW: change draw rectangle to contours
         cv2.line(img, poly[0], poly[1], color, tl, cv2.LINE_AA)
@@ -94,7 +94,7 @@ def plot_one_box(
     # REVIEW: turn off label text for better visualization
     if not obb:
         tf = max(tl - 1, 1)  # font thickness
-        t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[0]
+        t_size = cv2.getTextSize(label, 0, fontScale=tl / 5, thickness=tf)[0]
         c2 = c1[0] + t_size[0], c1[1] - t_size[1] - 3
         cv2.rectangle(img, c1, c2, color, -1, cv2.LINE_AA)  # filled
         cv2.putText(
@@ -102,7 +102,7 @@ def plot_one_box(
             label,
             (c1[0], c1[1] - 2),
             0,
-            tl / 3,
+            tl / 5,
             [225, 255, 255],
             thickness=tf,
             lineType=cv2.LINE_AA,
@@ -182,7 +182,7 @@ def plot_images(
     if np.max(images[0]) <= 1:
         images *= 255
 
-    tl = 3  # line thickness
+    tl = 1  # line thickness
     tf = max(tl - 1, 1)  # font thickness
     bs, _, h, w = images.shape  # batch size, _, height, width
     bs = min(bs, max_subplots)  # limit plot images

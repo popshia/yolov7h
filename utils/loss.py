@@ -564,13 +564,43 @@ class ComputeLoss:
             if n:
                 ps = pi[b, a, gj, gi]  # prediction subset corresponding to targets
 
+                # REVIEW: add prad
+                prad = ps[:, 4].sigmoid()
+
                 # Regression
                 pxy = ps[:, :2].sigmoid() * 2.0 - 0.5
                 pwh = (ps[:, 2:4].sigmoid() * 2) ** 2 * anchors[i]
                 pbox = torch.cat((pxy, pwh), 1)  # predicted box
+                # iou = bbox_iou(
+                #     pbox.T, tbox[i], x1y1x2y2=False, CIoU=True
+                # )  # iou(prediction, target)
+                # iou = bbox_iou(
+                #     pbox.T, tbox[i], x1y1x2y2=False, GIoU=True
+                # )  # iou(prediction, target)
                 iou = bbox_iou(
-                    pbox.T, tbox[i], x1y1x2y2=False, CIoU=True
+                    pbox.T, tbox[i], x1y1x2y2=False, DIoU=True
                 )  # iou(prediction, target)
+
+                # REVIEW: add iou weight: 1. min angle diff, 2. 1/(tan/2)
+                # print(prad[:5], trad[i][:5])
+                p_rad = torch.where(
+                    abs(prad - trad[i]) > 0.5, torch.min(1 - prad, prad), prad
+                )
+                t_rad = torch.where(
+                    abs(prad - trad[i]) > 0.5, torch.min(1 - trad[i], trad[i]), trad[i]
+                )
+                # print(p_rad[:5], t_rad[:5])
+                min_angle_diff = torch.where(
+                    abs(prad - trad[i]) > 0.5, p_rad + t_rad, p_rad - t_rad
+                )
+                # tangent = 1/(1+abs(torch.tan((min_angle_diff*torch.pi*2)/2)))
+                tangent = 1 / (1 + abs(torch.tan((min_angle_diff) / 2)))
+                # print(torch.max(min_angle_diff*torch.pi*2), torch.min(min_angle_diff*torch.pi*2))
+                # print(torch.max(tangent), torch.min(tangent))
+                # print(tangent)
+                # exit(0)
+                # iou *= 1/(1+min_angle_diff)
+                iou *= tangent
                 lbox += (1.0 - iou).mean()  # iou loss
 
                 # Objectness
@@ -595,21 +625,13 @@ class ComputeLoss:
                 # with open('targets.txt', 'a') as file:
                 #     [file.write('%11.5g ' * 4 % tuple(x) + '\n') for x in torch.cat((txy[i], twh[i]), 1)]
 
-                # REVIEW: add prad
-                prad = ps[:, 4]
+                # print(prad[:5], trad[i][:5])
+                # p_rad = torch.where(abs(prad-trad[i])>0.5, 1-prad, prad)
+                # print(p_rad[:5], trad[i][:5])
                 # REVIEW: add radian loss with smoothL1
-                lrad += self.SL1rad(prad.sigmoid(), trad[i])
+                # lrad += self.SL1rad(p_rad, trad[i])
+                # lrad += self.SL1rad(prad, trad[i])
                 # REVIEW: add GLD
-                # print(tbox[i].shape, trad[i].shape)
-                # print(len(prad), len(trad))
-                # print(self.GWDrad(prad, trad).view(-1, 1).shape)
-                # p_convert = ps[:, 4].view(-1, 1)
-                # p_convert = torch.where(temp>1, temp-temp.int(), temp)
-                # p_rad = torch.cat((pbox, p_convert), dim=1)
-                # t_rad = torch.cat((tbox[i], trad[i].view(-1, 1)), dim=1)
-                # print(p_rad[0:5], t_rad[0:5])
-                # print(mine2opencv(p_rad[0:5]), mine2opencv(t_rad[0:5]))
-                # lrad += self.GWDrad(mine2opencv(p_rad), mine2opencv(t_rad)).mean()
 
             # REVIEW: change obji index from 4 to 5
             # obji = self.BCEobj(pi[..., 4], tobj)
@@ -702,7 +724,8 @@ class ComputeLoss:
             gi, gj = gij.T  # grid xy indices
 
             # Append
-            a = t[:, 6].long()  # anchor indices
+            # REVIEW: change anchor index
+            a = t[:, 7].long()  # anchor indices
             indices.append(
                 (b, a, gj.clamp_(0, gain[3] - 1), gi.clamp_(0, gain[2] - 1))
             )  # image, anchor, grid indices
