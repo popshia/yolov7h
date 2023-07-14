@@ -1,4 +1,4 @@
-<mxfile host="app.diagrams.net" modified="2023-07-12T12:40:44.052Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36" version="21.5.0" etag="4ba7trhNoKN__4H0P9Pf" type="github" pages="6">
+<mxfile host="app.diagrams.net" modified="2023-07-14T08:23:01.654Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36" etag="eH7HDdYrnnDbv5bh7Fcm" version="21.6.2" type="github" pages="6">
   <diagram id="IUlV1Kt5bTspVuRwonGh" name="detect head">
     <mxGraphModel dx="914" dy="662" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="1" shadow="0">
       <root>
@@ -144,7 +144,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="3ruKenjzSWhoO990bf4P" name="obb definition">
-    <mxGraphModel dx="914" dy="662" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="1" shadow="0">
+    <mxGraphModel dx="962" dy="697" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="1" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -469,14 +469,26 @@
         <mxCell id="vw1eI-iUUelytifARVB6-89" value="$$\theta =\pi /6$$$$30^{\circ}&lt;br&gt;(0.08)$$" style="text;whiteSpace=wrap;html=1;fontSize=14;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="760.3199999999999" y="37.25999999999997" width="90" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="vw1eI-iUUelytifARVB6-90" value="$$(a)$$" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=14;" parent="1" vertex="1">
-          <mxGeometry x="85.51" y="651.25" width="70" height="30" as="geometry" />
+        <mxCell id="vw1eI-iUUelytifARVB6-90" value="OpenCV$$(a)$$" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="52.60000000000001" y="681.25" width="130" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="vw1eI-iUUelytifARVB6-91" value="$$(b)$$" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=14;" parent="1" vertex="1">
-          <mxGeometry x="363.25" y="651.25" width="70" height="30" as="geometry" />
+        <mxCell id="vw1eI-iUUelytifARVB6-91" value="Long Side$$(b)$$" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="332.23" y="681.25" width="130" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="vw1eI-iUUelytifARVB6-92" value="$$(c)$$" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=14;" parent="1" vertex="1">
-          <mxGeometry x="653.0699999999999" y="651.25" width="70" height="30" as="geometry" />
+        <mxCell id="vw1eI-iUUelytifARVB6-92" value="Ours&lt;br&gt;$$(c)$$" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="654.3399999999999" y="671.25" width="70" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="3vyEEaTe5XxqsQ1ez1VX-1" value="" style="endArrow=none;dashed=1;html=1;rounded=0;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="280" y="630" as="sourcePoint" />
+            <mxPoint x="280" y="30" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="3vyEEaTe5XxqsQ1ez1VX-2" value="" style="endArrow=none;dashed=1;html=1;rounded=0;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="560" y="631.3199999999999" as="sourcePoint" />
+            <mxPoint x="560" y="31.319999999999997" as="targetPoint" />
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>
