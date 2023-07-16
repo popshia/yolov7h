@@ -1,4 +1,4 @@
-<mxfile host="app.diagrams.net" modified="2023-07-16T13:17:06.458Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36" etag="ixKr4iFBgQsPbqVLa9q9" version="21.6.2" type="github" pages="6">
+<mxfile host="app.diagrams.net" modified="2023-07-16T13:17:53.574Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36" etag="VwfVJsYlFUpREtGHTmUc" version="21.6.2" type="github" pages="6">
   <diagram id="IUlV1Kt5bTspVuRwonGh" name="detect head">
     <mxGraphModel dx="1199" dy="1202" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="1" shadow="0">
       <root>
@@ -475,8 +475,8 @@
         <mxCell id="vw1eI-iUUelytifARVB6-91" value="Long Side$$(b)$$" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=14;" parent="1" vertex="1">
           <mxGeometry x="332.23" y="681.25" width="130" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="vw1eI-iUUelytifARVB6-92" value="Ours&lt;br&gt;$$(c)$$" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=14;" parent="1" vertex="1">
-          <mxGeometry x="654.3399999999999" y="671.25" width="70" height="50" as="geometry" />
+        <mxCell id="vw1eI-iUUelytifARVB6-92" value="Ours$$(c)$$" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="639.3399999999999" y="681.25" width="100" height="30" as="geometry" />
         </mxCell>
         <mxCell id="3vyEEaTe5XxqsQ1ez1VX-1" value="" style="endArrow=none;dashed=1;html=1;rounded=0;" parent="1" edge="1">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
